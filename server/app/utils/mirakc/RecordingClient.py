@@ -31,6 +31,7 @@ class RecordingOptions(BaseModel):
 
     content_path: Annotated[str, Field(alias='contentPath')]
     priority: Annotated[int, Field(ge=-2147483648, le=2147483647)] = 0
+    preferred_tuner: Annotated[str | None, Field(alias='preferredTuner')] = None
     pre_filters: Annotated[list[str], Field(alias='preFilters', default_factory=list)]
     post_filters: Annotated[list[str], Field(alias='postFilters', default_factory=list)]
 
@@ -43,12 +44,23 @@ class RecordingScheduleInput(BaseModel):
     tags: Annotated[list[str], Field(default_factory=list)]
 
 
+class RecordingTuner(BaseModel):
+    name: str
+    types: list[Literal['GR', 'BS', 'CS', 'CATV', 'SKY', 'BS4K']]
+
+
 class MirakcRecordingClient:
-    """mirakcの録画予約APIへアクセスし、応答を検証する。"""
+    """mirakcの録画予約とチューナーのAPIへアクセスし、応答を検証する。"""
 
     def __init__(self, client: httpx.AsyncClient, base_url: str) -> None:
         self.client = client
-        self.endpoint = base_url.rstrip('/') + '/api/recording/schedules'
+        self.base_url = base_url.rstrip('/')
+        self.endpoint = self.base_url + '/api/recording/schedules'
+
+    async def listTuners(self) -> list[RecordingTuner]:
+        response = await self.client.get(f'{self.base_url}/api/tuners')
+        response.raise_for_status()
+        return TypeAdapter(list[RecordingTuner]).validate_json(response.content)
 
     async def listSchedules(self) -> list[RecordingSchedule]:
         response = await self.client.get(self.endpoint)

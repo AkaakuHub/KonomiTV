@@ -71,6 +71,25 @@
             </div>
         </div>
 
+        <div v-if="isMirakcBackend" class="reservation-recording-settings__section">
+            <div class="reservation-recording-settings__label">優先チューナー</div>
+            <div class="reservation-recording-settings__description">
+                指定したチューナーを優先します。使用できない場合は、別の利用可能なチューナーで録画します。
+            </div>
+            <v-select
+                :disabled="reservation.is_recording_in_progress || tuners === null"
+                v-model="settings.preferred_tuner_name"
+                :items="tunerOptions"
+                item-title="title"
+                item-value="value"
+                color="primary"
+                variant="outlined"
+                density="compact"
+                hide-details
+                @update:model-value="handleChange">
+            </v-select>
+        </div>
+
         <!-- 録画フォルダのパス -->
         <div v-if="isEDCBBackend" class="reservation-recording-settings__section">
             <div class="reservation-recording-settings__label">録画フォルダのパス</div>
@@ -241,7 +260,7 @@
 import { objectHash } from 'ohash';
 import { ref, computed, watch, onMounted, toRaw } from 'vue';
 
-import { type IReservation, type IRecordSettings, type IRecordSettingsPresets } from '@/services/Reservations';
+import Reservations, { type IRecordingTuner, type IReservation, type IRecordSettings, type IRecordSettingsPresets } from '@/services/Reservations';
 import useServerSettingsStore from '@/stores/ServerSettingsStore';
 import useVersionStore from '@/stores/VersionStore';
 
@@ -262,12 +281,36 @@ const emit = defineEmits<{
 const versionStore = useVersionStore();
 const serverSettingsStore = useServerSettingsStore();
 const isEDCBBackend = computed(() => serverSettingsStore.server_settings.general.backend === 'EDCB');
+const isMirakcBackend = computed(() => serverSettingsStore.server_settings.general.backend === 'Mirakc');
+const tuners = ref<IRecordingTuner[] | null>(null);
 
 // 設定のコピーを作成（元の設定を変更しないため）
 const settings = ref<IRecordSettings>(structuredClone(toRaw(props.reservation.record_settings)));
 
 // 初期設定を保存（変更検知用）
 const initialSettings = ref<IRecordSettings>(structuredClone(toRaw(props.reservation.record_settings)));
+
+const tunerOptions = computed(() => {
+    const options: { title: string; value: string | null }[] = [
+        { title: '自動（親PC優先）', value: null },
+    ];
+    for (const tuner of tuners.value ?? []) {
+        if (tuner.types.includes(props.reservation.channel.type)) {
+            options.push({ title: tuner.name, value: tuner.name });
+        }
+    }
+    const selected = settings.value.preferred_tuner_name;
+    if (selected !== null && !options.some(option => option.value === selected)) {
+        options.push({ title: `${selected}（現在利用できません）`, value: selected });
+    }
+    return options;
+});
+
+watch(isMirakcBackend, async (enabled) => {
+    if (enabled) {
+        tuners.value = await Reservations.fetchRecordingTuners();
+    }
+}, { immediate: true });
 
 // 録画フォルダパス・録画ファイル名テンプレートの computed（settings.value を単一の情報源とする）
 // 録画フォルダは仕様上は複数指定できるが、複数指定はほとんど使われないので、KonomiTV では常に 0 番目の要素を使用する
