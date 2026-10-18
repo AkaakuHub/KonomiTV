@@ -135,7 +135,7 @@ class TimeTableProgramReservation(BaseModel):
     # 実際に録画可能かどうか: 全編録画可能 / チューナー不足のため部分的にのみ録画可能 (一部録画できない) / チューナー不足のため全編録画不可能
     # ref: https://github.com/xtne6f/EDCB/blob/work-plus-s-240212/Common/CommonDef.h#L32-L34
     # ref: https://github.com/xtne6f/EDCB/blob/work-plus-s-240212/Common/StructDef.h#L62
-    recording_availability: Literal['Full', 'Partial', 'Unavailable']
+    recording_availability: Literal['Full', 'Partial', 'Unavailable', 'Unknown']
 
 # ***** 録画ファイル *****
 
@@ -466,7 +466,7 @@ class Reservation(BaseModel):
     # 実際に録画可能かどうか: 全編録画可能 / チューナー不足のため部分的にのみ録画可能 (一部録画できない) / チューナー不足のため全編録画不可能
     # ref: https://github.com/xtne6f/EDCB/blob/work-plus-s-240212/Common/CommonDef.h#L32-L34
     # ref: https://github.com/xtne6f/EDCB/blob/work-plus-s-240212/Common/StructDef.h#L62
-    recording_availability: Literal['Full', 'Partial', 'Unavailable']
+    recording_availability: Literal['Full', 'Partial', 'Unavailable', 'Unknown']
     # コメント: EPG 予約で自動追加された予約なら "EPG自動予約" と入る
     comment: str
     # 録画予定のファイル名
@@ -474,7 +474,7 @@ class Reservation(BaseModel):
     scheduled_recording_file_name: str
     # 想定録画ファイルサイズ (バイト)
     ## EDCB の Bitrate.ini から取得したビットレート情報を基に算出した推定値
-    estimated_recording_file_size: int
+    estimated_recording_file_size: int | None
     # 録画設定
     record_settings: RecordSettings
 

@@ -90,7 +90,7 @@
                             <Icon icon="fluent:note-20-filled" width="14px" height="14px" class="reservation__content-meta-comment-icon" />
                             <span class="reservation__content-meta-comment-text">{{ reservation.comment }}</span>
                         </div>
-                        <div class="reservation__content-meta-size">
+                        <div v-if="reservation.estimated_recording_file_size !== null" class="reservation__content-meta-size">
                             <Icon icon="fluent:hard-drive-20-filled" width="14px" height="14px" class="reservation__content-meta-size-icon" />
                             約 {{ Utils.formatBytes(reservation.estimated_recording_file_size, 1, true) }}
                         </div>
@@ -116,13 +116,13 @@
                             <Icon icon="fluent:note-20-filled" width="14px" height="14px" class="reservation__content-description-comment-icon" />
                             <span class="reservation__content-description-comment-text">{{ reservation.comment }}</span>
                         </div>
-                        <div class="reservation__content-description-size">
+                        <div v-if="reservation.estimated_recording_file_size !== null" class="reservation__content-description-size">
                             <Icon icon="fluent:hard-drive-20-filled" width="14px" height="14px" class="reservation__content-description-size-icon" />
                             約 {{ Utils.formatBytes(reservation.estimated_recording_file_size, 1, true) }}
                         </div>
                     </div>
                     <!-- PC・タブレット横版：概要行の右側に推定録画容量を表示 -->
-                    <div v-if="!shouldShowProgramSearchAddButton" class="reservation__content-description-size-pc">
+                    <div v-if="!shouldShowProgramSearchAddButton && reservation.estimated_recording_file_size !== null" class="reservation__content-description-size-pc">
                         <Icon icon="fluent:hard-drive-20-filled" width="14px" height="14px" class="reservation__content-description-size-icon" />
                         約 {{ Utils.formatBytes(reservation.estimated_recording_file_size, 1, true) }}
                     </div>
