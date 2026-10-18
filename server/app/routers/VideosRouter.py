@@ -706,6 +706,7 @@ async def VideoAPI(
 )
 async def VideoDownloadAPI(
     recorded_program: Annotated[RecordedProgram, Depends(GetRecordedProgram)],
+    inline: Annotated[bool, Query(description='ブラウザで録画ファイルを直接再生する。')] = False,
 ):
     """
     指定された録画番組に対応する録画ファイルをダウンロードする。<br>
@@ -753,6 +754,7 @@ async def VideoDownloadAPI(
         path = file_path,
         filename = filename,
         media_type = media_type,
+        content_disposition_type = 'inline' if inline else 'attachment',
     )
 
 

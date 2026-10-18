@@ -483,11 +483,30 @@ class PlayerController {
                         };
                     }
 
+                    const recorded_video = player_store.recorded_program.recorded_video;
+                    if (recorded_video.status !== 'Recording' && recorded_video.container_format === 'MPEG-4') {
+                        const tile_info = recorded_video.thumbnail_info?.tile ?? null;
+                        return {
+                            quality: [{
+                                name: '保存画質',
+                                type: 'normal',
+                                url: `${Utils.api_base_url}/videos/${player_store.recorded_program.id}/download?inline=true`,
+                            }],
+                            defaultQuality: '保存画質',
+                            thumbnails: tile_info !== null ? {
+                                url: `${Utils.api_base_url}/videos/${player_store.recorded_program.id}/thumbnail/tiled`,
+                                interval: tile_info.interval_sec,
+                                width: tile_info.tile_width,
+                                height: tile_info.tile_height,
+                                columnCount: tile_info.column_count,
+                            } : undefined,
+                        };
+                    }
+
                     // ビデオストリーミング API のベース URL
                     const streaming_api_base_url = `${Utils.api_base_url}/streams/video/${player_store.recorded_program.id}`;
                     // 録画ファイルが録画中でなく、かつ MPEG-TS コンテナに格納された MPEG-2 映像の場合のみ、mpeg2toh264 によるオリジナル画質を利用可能とする
                     // 現状 MPEG-TS コンテナに格納された H.264/H.265 映像には対応していない
-                    const recorded_video = player_store.recorded_program.recorded_video;
                     const is_original_quality_available = (
                         recorded_video.status != 'Recording' &&
                         recorded_video.container_format === 'MPEG-TS' &&
@@ -1040,6 +1059,8 @@ class PlayerController {
                     mpeg2toh264_player.removeEventListener('seekable', apply_initial_seek);
                     apply_initial_seek();
                 }
+            } else if (this.player.type === 'normal' && this.player.video.readyState < HTMLMediaElement.HAVE_METADATA) {
+                this.player.video.addEventListener('loadedmetadata', apply_initial_seek, {once: true});
             } else {
                 apply_initial_seek();
             }
@@ -1692,7 +1713,7 @@ class PlayerController {
                             is_error_message: false,
                         });
                     });
-                } else if (this.player.type !== 'mpeg2toh264') {
+                } else if (this.player.type === 'hls') {
                     // 実はなぜか hls.js を使わずとも Safari では普通に Native HLS 再生できてしまうようなので、警告を出しつつ何もしない
                     // DPlayer 側の機能により、Native HLS 再生であっても字幕は表示される
                     console.warn('\u001b[31m[PlayerController] hls.js plugin not found. (Native HLS playback may be supported on Safari.)');
@@ -1734,6 +1755,14 @@ class PlayerController {
 
                     // DPlayer がすでに破棄されていれば何もしない
                     if (this.player === null) {
+                        return;
+                    }
+
+                    if (this.player.type === 'normal') {
+                        this.player.pause();
+                        player_store.is_loading = false;
+                        player_store.is_video_buffering = false;
+                        this.player.notice('録画ファイルを直接再生できませんでした。', 0, undefined, '#FF6F6A');
                         return;
                     }
 
