@@ -7,7 +7,7 @@ dependencies = [
     "aerich==0.9.1",
     "aiofiles>=24.1.0,<25",
     "aiohttp>=3.12.14,<4",
-    "ariblib @ https://github.com/tsukumijima/ariblib/releases/download/v0.1.4/ariblib-0.1.4-py3-none-any.whl",
+    "ariblib @ git+https://github.com/AkaakuHub/ariblib.git@e7eb5b7fe90a08432ae707065ff1d4f27efa7136",
     "atproto==0.0.68",
     "av>=16.0.1,<17",
     "bcrypt>=4.3.0,<5",
