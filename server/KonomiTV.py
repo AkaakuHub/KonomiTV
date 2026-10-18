@@ -118,6 +118,8 @@ def main(
 
     # すべてのサードパーティーライブラリの配置をチェック
     for library_name, library_path in LIBRARY_PATH.items():
+        if external_proxy and library_name == 'Akebi':
+            continue
         # x64 の場合、ARM のみの rkmppenc はチェックしない
         if current_arch in ['AMD64', 'x86_64'] and library_name == 'rkmppenc':
             continue
@@ -174,7 +176,7 @@ def main(
         # 起動するアプリケーション
         app = 'app.app:app',
         # リッスンするアドレス
-        ## サーバーへのすべてのアクセスには一度 HTTPS リバースプロキシを通す
+        ## サーバーへのすべてのアクセスにはHTTPSリバースプロキシを通す
         ## 混乱を避けるため、容易にアクセスされないだろう 127.0.0.77 のみでリッスンしている
         host = '127.0.0.77',
         # リッスンするポート番号
