@@ -2,7 +2,7 @@ from collections.abc import AsyncIterator
 from typing import Annotated
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import ValidationError
 
 from app import logging, schemas
@@ -19,7 +19,10 @@ from app.utils.mirakc.Reservations import (
 )
 
 
-router = APIRouter(tags=['Reservations'], prefix='/api/recording/reservations')
+router = APIRouter(
+    tags = ['Reservations'],
+    prefix = '/api/recording/reservations',
+)
 
 
 async def GetRecordingClient() -> AsyncIterator[MirakcRecordingClient]:
@@ -27,21 +30,20 @@ async def GetRecordingClient() -> AsyncIterator[MirakcRecordingClient]:
         try:
             yield MirakcRecordingClient(client, str(Config().general.mirakurun_url))
         except httpx.HTTPStatusError as error:
-            status = error.response.status_code
-            if status not in (400, 404, 409):
-                status = 502
+            status_code = error.response.status_code
+            if status_code not in (400, 404, 409):
+                status_code = status.HTTP_502_BAD_GATEWAY
             logging.warning(f'mirakc recording API returned HTTP {error.response.status_code}.')
-            raise HTTPException(status, 'mirakcの録画予約APIでエラーが発生しました。') from error
+            raise HTTPException(status_code, 'mirakcの録画予約APIでエラーが発生しました。') from error
         except (httpx.RequestError, ValidationError) as error:
             logging.warning('Failed to access mirakc recording schedules.', exc_info=error)
             raise HTTPException(502, 'mirakcの録画予約を取得できませんでした。') from error
 
 
-RecordingClient = Annotated[MirakcRecordingClient, Depends(GetRecordingClient)]
-
-
 @router.get('', response_model=schemas.Reservations)
-async def ReservationsAPI(client: RecordingClient) -> schemas.Reservations:
+async def ReservationsAPI(
+    client: Annotated[MirakcRecordingClient, Depends(GetRecordingClient)],
+) -> schemas.Reservations:
     schedules = await client.listSchedules()
     reservations = [
         await DecodeRecordingSchedule(schedule)
@@ -52,8 +54,11 @@ async def ReservationsAPI(client: RecordingClient) -> schemas.Reservations:
     return schemas.Reservations(total=len(reservations), reservations=reservations)
 
 
-@router.post('', status_code=201)
-async def AddReservationAPI(request: schemas.ReservationAddRequest, client: RecordingClient) -> None:
+@router.post('', status_code=status.HTTP_201_CREATED)
+async def AddReservationAPI(
+    request: schemas.ReservationAddRequest,
+    client: Annotated[MirakcRecordingClient, Depends(GetRecordingClient)],
+) -> None:
     program = await Program.get_or_none(id=request.program_id)
     if program is None:
         raise HTTPException(422, '番組表に指定の番組がありません。')
@@ -63,10 +68,16 @@ async def AddReservationAPI(request: schemas.ReservationAddRequest, client: Reco
 
 
 @router.get('/{reservation_id}', response_model=schemas.Reservation)
-async def ReservationAPI(reservation_id: int, client: RecordingClient) -> schemas.Reservation:
+async def ReservationAPI(
+    reservation_id: int,
+    client: Annotated[MirakcRecordingClient, Depends(GetRecordingClient)],
+) -> schemas.Reservation:
     return await DecodeRecordingSchedule(await client.getSchedule(reservation_id))
 
 
-@router.delete('/{reservation_id}', status_code=204)
-async def DeleteReservationAPI(reservation_id: int, client: RecordingClient) -> None:
+@router.delete('/{reservation_id}', status_code=status.HTTP_204_NO_CONTENT)
+async def DeleteReservationAPI(
+    reservation_id: int,
+    client: Annotated[MirakcRecordingClient, Depends(GetRecordingClient)],
+) -> None:
     await client.deleteSchedule(reservation_id)

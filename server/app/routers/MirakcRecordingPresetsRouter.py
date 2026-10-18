@@ -3,7 +3,10 @@ from fastapi import APIRouter
 from app import schemas
 
 
-router = APIRouter(tags=['Recording Presets'], prefix='/api/recording')
+router = APIRouter(
+    tags = ['Recording Presets'],
+    prefix = '/api/recording',
+)
 
 
 @router.get('/presets', response_model=schemas.RecordSettingsPresets)
