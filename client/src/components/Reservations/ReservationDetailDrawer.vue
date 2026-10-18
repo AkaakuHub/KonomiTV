@@ -275,8 +275,7 @@ const supportsReservations = computed(() => serverSettingsStore.supportsReservat
 // - 実際の予約がある場合: 表示 (既存予約の設定編集)
 // - mock の予約がある場合 (予約なし): 表示 (新規予約前の設定カスタマイズ)
 // - 過去番組の場合: 非表示
-const showSettingsTab = computed(() => hasReservation.value && !props.isPastProgram &&
-    (serverSettings.value.general.backend === 'EDCB' || isMockReservation.value));
+const showSettingsTab = computed(() => hasReservation.value && !props.isPastProgram);
 
 // 予約追加ボタンを表示するかどうか
 // mock の予約がある場合 (実際には予約なし) かつ過去番組でない場合に表示
