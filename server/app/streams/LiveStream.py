@@ -262,6 +262,32 @@ class LiveStream:
         self._detached_live_encoding_task_refs.add(live_encoding_task_ref)
 
 
+    async def __cancelAndWaitLiveEncodingTask(self) -> bool:
+        """
+        エンコードタスクをキャンセルし、終了処理の完了を待つ
+
+        Returns:
+            bool: 終了処理が完了したかどうか
+        """
+
+        if self._live_encoding_task_ref is None:
+            return True
+
+        old_live_encoding_task = self._live_encoding_task_ref
+        old_live_encoding_task.cancel()
+
+        # タイムアウト後も旧タスクが自然終了できるよう、再キャンセルしないwait()で待機する
+        done, _ = await asyncio.wait({old_live_encoding_task}, timeout=10.0)
+        if not done:
+            self.__detachLiveEncodingTaskRef(old_live_encoding_task)
+            logging.warning(f'{self.log_prefix} Encoding task cleanup did not complete within 10 seconds.')
+
+        if self._live_encoding_task_ref == old_live_encoding_task:
+            self._live_encoding_task_ref = None
+
+        return bool(done)
+
+
     @classmethod
     def getAllLiveStreams(cls) -> list[LiveStream]:
         """
@@ -433,25 +459,8 @@ class LiveStream:
                         if live_stream.tuner.handoff(live_stream.live_stream_id, self.live_stream_id) is False:
                             continue
 
-                        # 実行中のタスクがあればキャンセルする
-                        if live_stream._live_encoding_task_ref is not None:
-                            old_live_encoding_task = live_stream._live_encoding_task_ref
-                            old_live_encoding_task.cancel()
-
-                            # タスクの完了を最大 10 秒待つ
-                            ## エンコーダープロセスの kill とバックグラウンドタスクの完了を含め、通常は 0.5 秒程度で完了する
-                            ## EDCB との通信ハングなどで無期限にブロックされることを防ぐためにタイムアウトを設ける
-                            ## asyncio.wait() はタスクの状態を変更しないため、タイムアウトしても旧タスクは自然終了を続ける
-                            done, _ = await asyncio.wait(
-                                {old_live_encoding_task},
-                                timeout=10.0,
-                            )
-                            if not done:
-                                live_stream.__detachLiveEncodingTaskRef(old_live_encoding_task)
-                                logging.warning(f'{live_stream.log_prefix} Encoding task cleanup did not complete within 10 seconds.')
-
-                            if live_stream._live_encoding_task_ref == old_live_encoding_task:
-                                live_stream._live_encoding_task_ref = None
+                        # 実行中のタスクがあればキャンセルし、終了処理を待つ
+                        await live_stream.__cancelAndWaitLiveEncodingTask()
 
                         # チューナーインスタンスを移譲する
                         self.tuner = live_stream.tuner
@@ -465,6 +474,24 @@ class LiveStream:
                         break
 
                     await asyncio.sleep(0.1)
+
+            # mirakcでは無視聴のStandbyも解放し、HTTP切断を終えてから次のチューナーを要求する
+            elif should_start_task is True and Config().general.backend == 'Mirakc':
+                for live_stream in LiveStream.getAllLiveStreams():
+                    if live_stream is self:
+                        continue
+                    async with live_stream._tuner_lock:
+                        live_stream_status = live_stream.getStatus()
+                        if (live_stream_status.client_count != 0 or
+                            live_stream_status.status not in ('Standby', 'ONAir', 'Idling') or
+                            live_stream._live_encoding_task_ref is None):
+                            continue
+                        live_stream.setStatus('Offline', '新しいライブストリームが開始されたため、チューナーリソースを解放しました。')
+
+                    if await live_stream.__cancelAndWaitLiveEncodingTask() is False:
+                        self.setStatus('Offline', '前のライブストリームの終了処理が完了しませんでした。')
+                        should_start_task = False
+                        break
 
             # Mirakurun バックエンドの場合は、現在 Idling 状態のライブストリームを Offline にしてチューナーリソースを解放する
             ## Mirakurun バックエンドではチューナーインスタンスの直接移譲はできないため、
