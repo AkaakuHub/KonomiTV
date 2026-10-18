@@ -13,7 +13,7 @@
                     :class="{ 'reservation-detail-drawer__tab--active': activeTab === 'info' }"
                     @click="activeTab = 'info'">
                     <Icon icon="fluent:info-12-regular" width="20px" height="20px" />
-                    <span class="reservation-detail-drawer__tab-text">番組情報 {{ !showSettingsTab ? '（終了済み）' : '' }}</span>
+                    <span class="reservation-detail-drawer__tab-text">番組情報 {{ isPastProgram ? '（終了済み）' : '' }}</span>
                 </div>
                 <div v-if="showSettingsTab" v-ripple class="reservation-detail-drawer__tab"
                     :class="{ 'reservation-detail-drawer__tab--active': activeTab === 'settings' }"
@@ -48,10 +48,10 @@
                     </span>
                 </div>
                 <!-- Mirakurun バックエンド時の通知 -->
-                <div v-if="!isEDCBBackend && !isPastProgram && !hasRealReservation" class="status-banner status-banner--info mb-4">
+                <div v-if="!supportsReservations && !isPastProgram && !hasRealReservation" class="status-banner status-banner--info mb-4">
                     <Icon icon="fluent:info-16-regular" class="status-banner__icon" />
                     <span class="status-banner__text">
-                        録画予約機能は EDCB バックエンド選択時のみ利用できます。
+                        録画予約機能はEDCBまたはMirakcバックエンドで利用できます。
                     </span>
                 </div>
                 <!-- 番組情報 -->
@@ -88,7 +88,7 @@
                 </v-btn>
                 <!-- mock の予約 (予約なし) の場合: 予約追加ボタン -->
                 <v-btn v-if="showAddButton" class="px-3" color="secondary" variant="flat"
-                    :disabled="!isEDCBBackend" :loading="isAdding" @click="handleAddReservation">
+                    :disabled="!supportsReservations" :loading="isAdding" @click="handleAddReservation">
                     <Icon icon="fluent:timer-16-regular" width="20px" height="20px" />
                     <span class="ml-1">予約を追加</span>
                 </v-btn>
@@ -249,7 +249,7 @@ const showDeleteDialog = ref(false);
 // 閉じる確認ダイアログの表示状態
 const showCloseConfirmDialog = ref(false);
 
-// 録画設定プリセット一覧 (EDCB バックエンド時のみ取得される)
+// 録画設定プリセット一覧
 const presets = ref<IRecordSettingsPresets | null>(null);
 
 // 予約があるかどうか (null でなければ予約がある)
@@ -266,16 +266,17 @@ const hasRealReservation = computed(() => hasReservation.value && !isMockReserva
 // 表示用の番組情報（予約があればそちらを優先）
 const displayProgram = computed(() => props.reservation?.program ?? props.program ?? null);
 
-// EDCB バックエンドかどうか
-// サーバー設定がまだ取得されていない場合は EDCB と判定しない
+// 録画予約に対応するバックエンドかどうか
+// サーバー設定の取得前は録画予約を有効にしない
 // (デフォルト値が 'EDCB' のため、未取得状態で誤って true を返すと Mirakurun バックエンドでも予約操作が有効化されてしまう)
-const isEDCBBackend = computed(() => serverSettingsStore.is_loaded === true && serverSettings.value.general.backend === 'EDCB');
+const supportsReservations = computed(() => serverSettingsStore.supportsReservations);
 
 // 録画設定タブを表示するかどうか
 // - 実際の予約がある場合: 表示 (既存予約の設定編集)
 // - mock の予約がある場合 (予約なし): 表示 (新規予約前の設定カスタマイズ)
 // - 過去番組の場合: 非表示
-const showSettingsTab = computed(() => hasReservation.value && !props.isPastProgram);
+const showSettingsTab = computed(() => hasReservation.value && !props.isPastProgram &&
+    (serverSettings.value.general.backend === 'EDCB' || isMockReservation.value));
 
 // 予約追加ボタンを表示するかどうか
 // mock の予約がある場合 (実際には予約なし) かつ過去番組でない場合に表示
@@ -302,11 +303,11 @@ const isPartialRecording = computed(() => recordingAvailability.value === 'Parti
 // チューナー不足（録画不可）
 const isUnavailableRecording = computed(() => recordingAvailability.value === 'Unavailable');
 
-// サーバー設定を取得し、EDCB バックエンドの場合は録画設定プリセットも取得する
+// サーバー設定と録画設定プリセットを取得する
 onMounted(async () => {
     await serverSettingsStore.fetchServerSettingsOnce();
-    // EDCB バックエンドの場合のみプリセットを取得
-    if (isEDCBBackend.value) {
+    // 録画予約に対応する場合のみプリセットを取得
+    if (supportsReservations.value) {
         presets.value = await Reservations.fetchRecordingPresets();
     }
 });
@@ -403,9 +404,9 @@ const confirmDelete = async () => {
 const handleAddReservation = async () => {
     if (isAdding.value || !displayProgram.value || !props.reservation) return;
 
-    // EDCB バックエンドでない場合はエラー
-    if (!isEDCBBackend.value) {
-        Message.error('録画予約機能は EDCB バックエンド選択時のみ利用できます。');
+    // 録画予約に対応しない場合はエラー
+    if (!supportsReservations.value) {
+        Message.error('録画予約機能はEDCBまたはMirakcバックエンドで利用できます。');
         return;
     }
 

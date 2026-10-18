@@ -91,7 +91,7 @@ export interface IReservationUpdateRequest {
  * 録画設定プリセット一覧 API のレスポンス
  */
 export interface IRecordSettingsPresets {
-    global_defaults: IRecordSettingsGlobalDefaults;
+    global_defaults: IRecordSettingsGlobalDefaults | null;
     presets: IRecordSettingsPreset[];
 }
 

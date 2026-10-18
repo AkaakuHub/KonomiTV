@@ -637,7 +637,7 @@ class RecordingFolder(BaseModel):
 # 録画設定プリセット一覧
 class RecordSettingsPresets(BaseModel):
     # グローバルデフォルト値
-    global_defaults: RecordSettingsGlobalDefaults
+    global_defaults: RecordSettingsGlobalDefaults | None
     # プリセット一覧 (ID=0 のデフォルトプリセットを含む)
     presets: list[RecordSettingsPreset]
 

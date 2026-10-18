@@ -24,7 +24,7 @@
                     <div class="reservation__priority-badge">{{ reservation.record_settings.priority }}</div>
                     <div class="reservation__priority-label">優先度</div>
                 </div>
-                <div v-if="!shouldShowProgramSearchAddButton && !reservation.is_recording_in_progress" class="reservation__toggle" @click="handleSwitchClick">
+                <div v-if="!shouldShowProgramSearchAddButton && !reservation.is_recording_in_progress && serverSettingsStore.server_settings.general.backend === 'EDCB'" class="reservation__toggle" @click="handleSwitchClick">
                     <v-switch
                         v-model="isEnabled"
                         color="primary"
@@ -35,7 +35,7 @@
                     ></v-switch>
                     <div class="reservation__toggle-label">{{ isEnabled ? '有効' : '無効' }}</div>
                 </div>
-                <div v-else-if="!shouldShowProgramSearchAddButton" class="reservation__recording">
+                <div v-else-if="!shouldShowProgramSearchAddButton && reservation.is_recording_in_progress" class="reservation__recording">
                     <div class="reservation__recording-icon"></div>
                 </div>
             </div>
@@ -137,7 +137,10 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import Message from '@/message';
 import Reservations, { IReservation } from '@/services/Reservations';
+import useServerSettingsStore from '@/stores/ServerSettingsStore';
 import Utils, { ProgramUtils, dayjs } from '@/utils';
+
+const serverSettingsStore = useServerSettingsStore();
 
 // Props
 const props = defineProps<{

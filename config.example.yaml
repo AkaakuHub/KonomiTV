@@ -4,7 +4,7 @@ general:
 
     # 利用するバックエンド
     # EDCB・Mirakurun・Mirakcのいずれかを選択してください。
-    # 録画予約機能は現在EDCBバックエンドで利用できます。
+    # 録画予約機能はEDCBまたはMirakcバックエンドで利用できます。
     backend: 'EDCB'
 
     # 利用するバックエンドが EDCB のとき、常に Mirakurun / mirakc から放送波を受信するか

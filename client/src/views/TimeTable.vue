@@ -152,25 +152,25 @@ const timetableGridRef = ref<InstanceType<typeof TimeTableGrid> | null>(null);
 const serverSettingsStore = useServerSettingsStore();
 const serverSettings = computed(() => serverSettingsStore.server_settings);
 
-// EDCB バックエンドかどうか
-// サーバー設定がまだ取得されていない場合は EDCB と判定しない
+// 録画予約に対応するバックエンドかどうか
+// サーバー設定の取得前は録画予約を有効にしない
 // (デフォルト値が 'EDCB' のため、未取得状態で誤って true を返すと Mirakurun バックエンドでも予約操作が有効化されてしまう)
-const isEDCBBackend = computed(() => serverSettingsStore.is_loaded === true && serverSettings.value.general.backend === 'EDCB');
+const supportsReservations = computed(() => serverSettingsStore.supportsReservations);
 
 // デフォルト録画設定のキャッシュ (初回 API 呼出時に取得され、以降はキャッシュから返される)
 let defaultRecordSettingsCache: IRecordSettings | null = null;
 
 /**
  * デフォルトの録画設定を取得する (キャッシュ付き)
- * EDCB バックエンドの場合は API からプリセットのデフォルト値を取得し、以降はキャッシュを返す
- * Mirakurun バックエンドの場合はハードコードされたフォールバック値を返す (プリセット API は EDCB 専用のため)
+ * 録画予約に対応するバックエンドではAPIからデフォルト値を取得し、以降はキャッシュを返す
+ * Mirakurun バックエンドの場合はハードコードされたフォールバック値を返す
  * @returns デフォルトの録画設定
  */
 async function getDefaultRecordSettings(): Promise<IRecordSettings> {
 
-    // EDCB バックエンドでない場合は API を呼ばずにフォールバック値を返す
-    // プリセット API は EDCB 専用のため、Mirakurun バックエンドで呼ぶとエラーになる
-    if (isEDCBBackend.value === false) {
+    // 録画予約に対応しない場合はAPIを呼ばない
+    // Mirakurunには録画設定プリセットがない
+    if (supportsReservations.value === false) {
         return structuredClone(IRecordSettingsDefault);
     }
     if (defaultRecordSettingsCache !== null) {
@@ -673,9 +673,14 @@ async function onQuickReserve(programId: string, channel: IChannel, program: ITi
         return;
     }
 
-    // EDCB バックエンドでない場合はエラー
-    if (isEDCBBackend.value === false) {
-        Message.warning('録画予約機能は EDCB バックエンド選択時のみ利用できます。');
+    // 録画予約に対応しない場合はエラー
+    if (supportsReservations.value === false) {
+        Message.warning('録画予約機能はEDCBまたはMirakcバックエンドで利用できます。');
+        return;
+    }
+
+    if (program.reservation !== null && serverSettings.value.general.backend === 'Mirakc') {
+        await onShowProgramDetail(programId, channel, program);
         return;
     }
 
