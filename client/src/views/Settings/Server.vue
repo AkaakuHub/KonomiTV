@@ -528,7 +528,7 @@ const is_epg_collection_starting = ref(false);
 const server_settings = ref<IServerSettings>(structuredClone(IServerSettingsDefault));
 server_settings_store.fetchServerSettingsOnce().then((settings) => {
     if (settings) {
-        server_settings.value = settings;
+        server_settings.value = structuredClone(settings);
     }
 });
 
