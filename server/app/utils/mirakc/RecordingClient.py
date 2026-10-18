@@ -68,3 +68,11 @@ class MirakcRecordingClient:
     async def deleteSchedule(self, program_id: int) -> None:
         response = await self.client.delete(f'{self.endpoint}/{program_id}')
         response.raise_for_status()
+
+    async def updateSchedule(self, schedule: RecordingSchedule) -> RecordingSchedule:
+        response = await self.client.put(
+            f'{self.endpoint}/{schedule.program.id}',
+            json=schedule.model_dump(include={'options', 'tags'}, by_alias=True),
+        )
+        response.raise_for_status()
+        return RecordingSchedule.model_validate_json(response.content)

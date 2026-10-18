@@ -75,6 +75,18 @@ async def ReservationAPI(
     return await DecodeRecordingSchedule(await client.getSchedule(reservation_id))
 
 
+@router.put('/{reservation_id}', response_model=schemas.Reservation)
+async def ReservationUpdateAPI(
+    reservation_id: int,
+    request: schemas.ReservationUpdateRequest,
+    client: Annotated[MirakcRecordingClient, Depends(GetRecordingClient)],
+) -> schemas.Reservation:
+    options = EncodeRecordingOptions(request.record_settings, reservation_id)
+    schedule = await client.getSchedule(reservation_id)
+    schedule.options.priority = options.priority
+    return await DecodeRecordingSchedule(await client.updateSchedule(schedule))
+
+
 @router.delete('/{reservation_id}', status_code=status.HTTP_204_NO_CONTENT)
 async def DeleteReservationAPI(
     reservation_id: int,
