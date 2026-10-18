@@ -55,6 +55,7 @@ def version(value: bool):
 @cli.command(help='KonomiTV: Kept Organized, Notably Optimized, Modern Interface TV media server')
 def main(
     reload: bool = typer.Option(False, '--reload', help='Start Uvicorn in auto-reload mode. (Linux only)'),
+    external_proxy: bool = typer.Option(False, '--external-proxy', help='Use an external HTTPS reverse proxy.'),
     version: bool = typer.Option(None, '--version', callback=version, is_eager=True, help='Show version information.'),
 ):
 
@@ -138,41 +139,42 @@ def main(
 
     # ***** KonomiTV サーバーを起動 *****
 
-    # カスタム HTTPS 証明書/秘密鍵が指定されているとき
-    custom_https_certificate: list[str] = []
-    if CONFIG.server.custom_https_certificate is not None and CONFIG.server.custom_https_private_key is not None:
-        custom_https_certificate = [
-            '--custom-certificate', str(CONFIG.server.custom_https_certificate),
-            '--custom-private-key', str(CONFIG.server.custom_https_private_key),
-        ]
+    if not external_proxy:
+        # カスタム HTTPS 証明書/秘密鍵が指定されているとき
+        custom_https_certificate: list[str] = []
+        if CONFIG.server.custom_https_certificate is not None and CONFIG.server.custom_https_private_key is not None:
+            custom_https_certificate = [
+                '--custom-certificate', str(CONFIG.server.custom_https_certificate),
+                '--custom-private-key', str(CONFIG.server.custom_https_private_key),
+            ]
 
-    # Akebi HTTPS Server (HTTPS リバースプロキシ) を起動
-    ## HTTP/2 対応と HTTPS 化を一手に行う Golang 製の特殊なリバースプロキシサーバー
-    ## ログは server/logs/Akebi-HTTPS-Server.log に出力する
-    ## ref: https://github.com/tsukumijima/Akebi
-    with open(AKEBI_LOG_PATH, mode='w', encoding='utf-8') as file:
-        reverse_proxy_process = subprocess.Popen(
-            [
-                LIBRARY_PATH['Akebi'],
-                '--listen-address', f'0.0.0.0:{CONFIG.server.port}',
-                '--proxy-pass-url', f'http://127.0.0.77:{CONFIG.server.port + 10}/',
-                '--keyless-server-url', 'https://akebi.konomi.tv/',
-                *custom_https_certificate,  # カスタム HTTPS 証明書/秘密鍵を指定する引数を追加（指定されているときのみ）
-            ],
-            stdout = file,
-            stderr = file,
-            creationflags = (subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0),  # コンソールなしで実行 (Windows)
-        )
+        # Akebi HTTPS Server (HTTPS リバースプロキシ) を起動
+        ## HTTP/2 対応と HTTPS 化を一手に行う Golang 製の特殊なリバースプロキシサーバー
+        ## ログは server/logs/Akebi-HTTPS-Server.log に出力する
+        ## ref: https://github.com/tsukumijima/Akebi
+        with open(AKEBI_LOG_PATH, mode='w', encoding='utf-8') as file:
+            reverse_proxy_process = subprocess.Popen(
+                [
+                    LIBRARY_PATH['Akebi'],
+                    '--listen-address', f'0.0.0.0:{CONFIG.server.port}',
+                    '--proxy-pass-url', f'http://127.0.0.77:{CONFIG.server.port + 10}/',
+                    '--keyless-server-url', 'https://akebi.konomi.tv/',
+                    *custom_https_certificate,  # カスタム HTTPS 証明書/秘密鍵を指定する引数を追加（指定されているときのみ）
+                ],
+                stdout = file,
+                stderr = file,
+                creationflags = (subprocess.CREATE_NO_WINDOW if sys.platform == 'win32' else 0),  # コンソールなしで実行 (Windows)
+            )
 
-    # このプロセスが終了されたときに、HTTPS リバースプロキシも一緒に終了する
-    atexit.register(lambda: reverse_proxy_process.terminate())
+        # このプロセスが終了されたときに、HTTPS リバースプロキシも一緒に終了する
+        atexit.register(lambda: reverse_proxy_process.terminate())
 
     # Uvicorn の設定
     server_config = uvicorn.Config(
         # 起動するアプリケーション
         app = 'app.app:app',
         # リッスンするアドレス
-        ## サーバーへのすべてのアクセスには一度 Akebi のリバースプロキシを通す
+        ## サーバーへのすべてのアクセスには一度 HTTPS リバースプロキシを通す
         ## 混乱を避けるため、容易にアクセスされないだろう 127.0.0.77 のみでリッスンしている
         host = '127.0.0.77',
         # リッスンするポート番号
