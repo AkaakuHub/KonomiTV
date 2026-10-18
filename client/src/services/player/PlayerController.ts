@@ -257,6 +257,10 @@ class PlayerController {
         // KeyboardShortcutManager がこのタイミングで破棄される
         player_store.is_player_initialized = true;
 
+        const is_original_hevc = this.playback_mode === 'Live' &&
+            channels_store.channel.current.program_present?.video_codec?.toUpperCase() === 'H.265';
+        const original_live_quality_name = is_original_hevc ? 'Original (HEVC)' : 'Original (MPEG-2)';
+
         // ブラウザが H.265 / HEVC の再生に対応していて、かつ通信節約モードが有効なとき、H.265 / HEVC で再生する
         let is_hevc_playback = false;
         if (PlayerUtils.isHEVCVideoSupported() &&
@@ -419,10 +423,10 @@ class PlayerController {
                         });
                     // 通常のチャンネルの場合
                     } else {
-                        // mpeg2toh264 によるオリジナル画質は常に画質リストの先頭に追加する
+                        // 元映像がHEVCの場合はmpegts.jsで再生する
                         qualities.push({
-                            name: 'Original (MPEG-2)',
-                            type: 'mpeg2toh264',
+                            name: original_live_quality_name,
+                            type: is_original_hevc ? 'mpegts' : 'mpeg2toh264',
                             url: `${streaming_api_base_url}/original/mpegts`,
                         });
                         // 画質リストを作成
@@ -437,10 +441,10 @@ class PlayerController {
                     }
                     // デフォルトの画質
                     let default_quality: string;
-                    // デフォルト画質に original が指定されている場合、ラジオチャンネルを除きデフォルト画質を "Original (MPEG-2)" に設定する
+                    // originalの表示名は元映像のコーデックに合わせる
                     if (this.quality_profile.tv_streaming_quality === 'original') {
                         // ラジオチャンネルは mpeg2toh264 に対応していないため、1080p 固定 (実際には映像エンコードは行われない)
-                        default_quality = channels_store.channel.current.is_radiochannel === true ? '1080p' : 'Original (MPEG-2)';
+                        default_quality = channels_store.channel.current.is_radiochannel === true ? '1080p' : original_live_quality_name;
                     } else {
                         // DPlayer は表示名と完全一致する画質を選ぶため、1080p-60fps のみ表示名へ変換する
                         default_quality = this.quality_profile.tv_streaming_quality === '1080p-60fps' ?
@@ -747,7 +751,7 @@ class PlayerController {
                         // メインスレッドから再生処理を分離することで、低スペック端末で DOM 描画の遅延が影響して映像再生が詰まる問題が解消される
                         // MSE in Worker が使えない環境では自動的に mpegts.js 側でフォールバックされるため、基本的に true を設定する
                         // ただし Windows 版 Microsoft Edge では MSE in Worker 有効時のみ H.265 / HEVC 再生が動作しないため、この場合のみ無効化する
-                        enableWorkerForMSE: (is_hevc_playback === true && is_hevc_video_supported_in_worker === false) ? false : true,
+                        enableWorkerForMSE: ((is_hevc_playback || is_original_hevc) && is_hevc_video_supported_in_worker === false) ? false : true,
                         // 再生開始まで 2048KB のバッファを貯める (?)
                         // あまり大きくしすぎてもどうも効果がないようだが、小さくしたり無効化すると特に Safari で不安定になる
                         enableStashBuffer: true,
@@ -1306,6 +1310,20 @@ class PlayerController {
         const player_store = usePlayerStore();
         const settings_store = useSettingsStore();
 
+        const stop_original_hevc_playback = (message: string): boolean => {
+            if (this.player === null || this.playback_mode !== 'Live' || this.player.qualityIndex !== 0 ||
+                channels_store.channel.current.program_present?.video_codec?.toUpperCase() !== 'H.265' ||
+                this.player.type !== 'mpegts') {
+                return false;
+            }
+            this.player.pause();
+            this.player.plugins.mpegts?.unload();
+            player_store.is_loading = false;
+            player_store.is_video_buffering = false;
+            this.player.notice(message, 0, undefined, '#FF6F6A');
+            return true;
+        };
+
         // ライブ視聴: 再生停止状態かつ現在の再生位置からバッファが 30 秒以上離れていないかを 60 秒おきに監視し、そうなっていたら強制的にシークする
         // mpegts.js の仕様上、MSE 側に未再生のバッファが貯まり過ぎると新規に SourceBuffer が追加できなくなるため、強制的に接続が切断されてしまう
         // 再生停止状態でも定期的にシークすることで、バッファが貯まりすぎないように調節する
@@ -1390,6 +1408,13 @@ class PlayerController {
             // ライブ視聴時のみ
             if (this.playback_mode === 'Live') {
 
+                const features = mpegts.getFeatureList();
+                if (features.mseH265Playback === false || features.networkStreamIO === false) {
+                    if (stop_original_hevc_playback('このブラウザはHEVCのオリジナル画質の再生に対応していません。')) {
+                        return;
+                    }
+                }
+
                 // mpeg2toh264 によるオリジナル画質再生時のみの専用処理
                 if (this.player.type === 'mpeg2toh264' && this.player.plugins.mpeg2toh264) {
                     player_store.is_loading = true;
@@ -1435,6 +1460,10 @@ class PlayerController {
                 // PlayerController 内部なので直接再起動してもいいのだが、PlayerController を再起動させる処理は共通化しておきたい
                 this.player.plugins.mpegts?.on(mpegts.Events.ERROR, async (error_type: string, detail: string) => {
 
+                    if (stop_original_hevc_playback(`再生中にエラーが発生しました。(${error_type}: ${detail})`)) {
+                        return;
+                    }
+
                     // DPlayer がすでに破棄されている場合は何もしない
                     if (this.player === null) {
                         return;
@@ -1461,6 +1490,11 @@ class PlayerController {
                 // mpegts.js が予期せずクラッシュした場合など、意図せず発生してしまうことがある
                 // Offline 以外であれば PlayerController の再起動を要求する
                 this.player.on('error', async (event: MediaError) => {
+
+                    const error = this.player?.video.error;
+                    if (stop_original_hevc_playback(`再生中にエラーが発生しました。(Native: ${error?.code ?? 'unknown'}: ${error?.message ?? 'unknown error'})`)) {
+                        return;
+                    }
 
                     // DPlayer がすでに破棄されているか、現在ライブストリームが Offline であれば何もしない
                     if (this.player === null || player_store.live_stream_status === 'Offline') {

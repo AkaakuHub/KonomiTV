@@ -561,8 +561,7 @@ class LiveEncodingTask:
         # エンコーダーの種類を取得
         ENCODER_TYPE = CONFIG.general.encoder
 
-        # オリジナル画質 ("original") が指定された場合のみ、mpeg2toh264 での変換・再生を前提に、
-        # tsreadex からの出力をそのままストリーミングする
+        # オリジナル画質では映像と音声を再エンコードせず配信する
         is_original_quality = self.live_stream.quality == 'original'
 
         # まだ Standby になっていなければ、ステータスを Standby に設定
@@ -619,6 +618,8 @@ class LiveEncodingTask:
                 ## +1: ストリームが存在しない場合、PMT の項目が補われて出力される
                 '-u', '1',
             ]
+            if program_present is not None and (program_present.video_codec or '').upper() == 'H.265':
+                tsreadex_options += ['-d', '9']
         else:
             # エンコード済み画質はエンコーダーが安定して入力できる音声と Timed Metadata を生成する
             tsreadex_options += [
