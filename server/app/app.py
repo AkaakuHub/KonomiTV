@@ -300,4 +300,4 @@ async def Shutdown():
 
 # shutdown イベントが発火しない場合も想定し、アプリケーションの終了時に Shutdown() が確実に呼ばれるように
 # atexit は同期関数しか実行できないので、asyncio.run() でくるむ
-atexit.register(asyncio.run, Shutdown())
+atexit.register(lambda: asyncio.run(Shutdown()))
