@@ -292,7 +292,7 @@ const initialSettings = ref<IRecordSettings>(structuredClone(toRaw(props.reserva
 
 const tunerOptions = computed(() => {
     const options: { title: string; value: string | null }[] = [
-        { title: '自動（親PC優先）', value: null },
+        { title: '自動', value: null },
     ];
     for (const tuner of tuners.value ?? []) {
         if (tuner.types.includes(props.reservation.channel.type)) {
