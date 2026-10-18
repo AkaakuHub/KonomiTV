@@ -29,7 +29,7 @@ RUN unzip thirdparty-linux.tar.xz.zip && tar xvf thirdparty-linux.tar.xz
 # クライアントのビルド成果物 (dist) は Git に含まれているが、万が一ビルドし忘れたりや開発ブランチでの利便性を考慮してビルドしておく
 # --------------------------------------------------------------------------------------------------------------
 
-FROM node:20.16.0 AS client-builder
+FROM node:24.22.0 AS client-builder
 
 # 依存パッケージリスト (package.json/yarn.lock) だけをコピー
 WORKDIR /code/client/
