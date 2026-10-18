@@ -438,7 +438,7 @@
 </template>
 <script lang="ts" setup>
 
-import { ref } from 'vue';
+import { ref, toRaw } from 'vue';
 
 import AccountManageSettings from '@/components/Settings/AccountManageSettings.vue';
 import ServerLogDialog from '@/components/Settings/ServerLogDialog.vue';
@@ -528,7 +528,7 @@ const is_epg_collection_starting = ref(false);
 const server_settings = ref<IServerSettings>(structuredClone(IServerSettingsDefault));
 server_settings_store.fetchServerSettingsOnce().then((settings) => {
     if (settings) {
-        server_settings.value = structuredClone(settings);
+        server_settings.value = structuredClone(toRaw(settings));
     }
 });
 
