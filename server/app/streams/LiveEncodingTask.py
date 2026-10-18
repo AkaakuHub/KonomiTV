@@ -558,6 +558,9 @@ class LiveEncodingTask:
         ## always_receive_tv_from_mirakurun が True なら、バックエンドに関わらず常に Mirakurun / mirakc から受信する
         BACKEND_TYPE: Literal['EDCB', 'Mirakurun'] = 'EDCB' if CONFIG.general.backend == 'EDCB' and CONFIG.general.always_receive_tv_from_mirakurun is False else 'Mirakurun'
 
+        # 別チューナーへの切り替えを防ぐため、mirakcのエラー時は原因を表示して停止する
+        RESTART_STATUS: Literal['Offline', 'Restart'] = 'Offline' if CONFIG.general.backend == 'Mirakc' else 'Restart'
+
         # エンコーダーの種類を取得
         ENCODER_TYPE = CONFIG.general.encoder
 
@@ -1304,8 +1307,8 @@ class LiveEncodingTask:
                                 self.live_stream.setStatus('Offline', 'チューナーからの放送波の受信に失敗したため、エンコードを開始できません。(E-04F)')
                         elif 'Conversion failed!' in line:
                             # 捕捉されないエラー
-                            ## エンコーダーの再起動で復帰できる可能性があるので、エンコードタスクを再起動する
-                            result = self.live_stream.setStatus('Restart', 'エンコード中に予期しないエラーが発生しました。エンコードタスクを再起動しています… (ER-01F)')
+                            ## mirakc以外ではエンコーダーの再起動で復帰できる可能性があるので、エンコードタスクを再起動する
+                            result = self.live_stream.setStatus(RESTART_STATUS, 'エンコード中に予期しないエラーが発生しました。(E-01F)' if CONFIG.general.backend == 'Mirakc' else 'エンコード中に予期しないエラーが発生しました。エンコードタスクを再起動しています… (ER-01F)')
                             # 直近 50 件のログを表示
                             if result is True:
                                 for log in lines[-51:-1]:
@@ -1337,15 +1340,18 @@ class LiveEncodingTask:
                             self.live_stream.setStatus('Offline', 'お使いの PC 環境は VCEEncC エンコーダーに対応していません。(E-10HV)')
                         elif 'Consider increasing the value for the --input-analyze and/or --input-probesize!' in line:
                             # --input-probesize or --input-analyze の期間内に入力ストリームの解析が終わらなかった
-                            ## エンコーダーの再起動で復帰できる可能性があるので、エンコードタスクを再起動する
-                            self.live_stream.setStatus('Restart', '入力ストリームの解析に失敗しました。エンコードタスクを再起動しています… (ER-02H)')
+                            ## mirakc以外ではエンコーダーの再起動で復帰できる可能性があるので、エンコードタスクを再起動する
+                            result = self.live_stream.setStatus(RESTART_STATUS, '入力ストリームの解析に失敗しました。(E-02H)' if CONFIG.general.backend == 'Mirakc' else '入力ストリームの解析に失敗しました。エンコードタスクを再起動しています… (ER-02H)')
+                            if result is True:
+                                for log in lines[-151:-1]:
+                                    logging.warning(log)
                         elif 'finished with error!' in line:
                             # 捕捉されないエラー
                             ## Controller 非同期タスク側で完全にエンコーダープロセスが落ちたタイミングで HEVC 非対応かなどを判断しているため、
                             ## ここで 0.5 秒待機してから実行する
                             await asyncio.sleep(0.5)
-                            ## エンコーダーの再起動で復帰できる可能性があるので、エンコードタスクを再起動する
-                            result = self.live_stream.setStatus('Restart', 'エンコード中に予期しないエラーが発生しました。エンコードタスクを再起動しています… (ER-03H)')
+                            ## mirakc以外ではエンコーダーの再起動で復帰できる可能性があるので、エンコードタスクを再起動する
+                            result = self.live_stream.setStatus(RESTART_STATUS, 'エンコード中に予期しないエラーが発生しました。(E-03H)' if CONFIG.general.backend == 'Mirakc' else 'エンコード中に予期しないエラーが発生しました。エンコードタスクを再起動しています… (ER-03H)')
                             # 直近 150 件のログを表示
                             if result is True:
                                 for log in lines[-151:-1]:
@@ -1458,8 +1464,8 @@ class LiveEncodingTask:
                             # できるだけエンコーダーのエラーメッセージを拾ってログを出力してから終了したいので、1秒間実行を待機する
                             await asyncio.sleep(1)
 
-                            # エンコードタスクを再起動
-                            result = self.live_stream.setStatus('Restart', 'エンコードが途中で停止しました。エンコードタスクを再起動しています… (ER-04)')
+                            # mirakcでは停止、それ以外ではエンコードタスクを再起動
+                            result = self.live_stream.setStatus(RESTART_STATUS, 'エンコードが途中で停止しました。(E-04)' if CONFIG.general.backend == 'Mirakc' else 'エンコードが途中で停止しました。エンコードタスクを再起動しています… (ER-04)')
 
                             # エンコーダーのログを表示 (FFmpeg は最後の50行、HWEncC は最後の150行を表示)
                             if result is True:
@@ -1475,8 +1481,8 @@ class LiveEncodingTask:
                     if ((BACKEND_TYPE == 'Mirakurun' and response is not None and response.closed is True) or
                         (BACKEND_TYPE == 'EDCB' and self.live_stream.tuner is not None and self.live_stream.tuner.isDisconnected() is True)):
 
-                        # エンコードタスクを再起動
-                        self.live_stream.setStatus('Restart', 'チューナーとの接続が切断されました。エンコードタスクを再起動しています… (ER-05)')
+                        # mirakcでは停止、それ以外ではエンコードタスクを再起動
+                        self.live_stream.setStatus(RESTART_STATUS, 'チューナーとの接続が切断されました。(E-05)' if CONFIG.general.backend == 'Mirakc' else 'チューナーとの接続が切断されました。エンコードタスクを再起動しています… (ER-05)')
 
                     # エンコーダーが意図せず終了した場合
                     if encoder.returncode is not None:
@@ -1510,8 +1516,8 @@ class LiveEncodingTask:
                         # それ以外なら、エンコーダーの再起動で復帰できる可能性があるのでエンコードタスクを再起動する
                         if self.live_stream.getStatus().status != 'Offline':
 
-                            # エンコードタスクを再起動
-                            result = self.live_stream.setStatus('Restart', 'エンコーダーが強制終了されました。エンコードタスクを再起動しています… (ER-06)')
+                            # mirakcでは停止、それ以外ではエンコードタスクを再起動
+                            result = self.live_stream.setStatus(RESTART_STATUS, 'エンコーダーが強制終了されました。(E-06)' if CONFIG.general.backend == 'Mirakc' else 'エンコーダーが強制終了されました。エンコードタスクを再起動しています… (ER-06)')
 
                             # エンコーダーのログを表示 (FFmpeg は最後の50行、HWEncC は最後の150行を表示)
                             if result is True:
