@@ -623,6 +623,8 @@ class RecordSettings(BaseModel):
     # チューナーを強制指定する際のチューナー ID / 自動選択の場合は None
     # UI 上では非表示 (新規追加時は None で固定)
     forced_tuner_id: Annotated[int, Field(ge=0)] | None = None
+    # Mirakcで優先するチューナーの設定名 / 自動選択の場合はNone
+    preferred_tuner_name: str | None = None
 
 # 録画フォルダ
 class RecordingFolder(BaseModel):
