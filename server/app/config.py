@@ -140,7 +140,7 @@ class ClientSettings(BaseModel):
 # config.yaml のバリデーションは設定データをこの Pydantic モデルに通すことで行う
 
 class _ServerSettingsGeneral(BaseModel):
-    backend: Literal['EDCB', 'Mirakurun'] = 'EDCB'
+    backend: Literal['EDCB', 'Mirakurun', 'Mirakc'] = 'EDCB'
     always_receive_tv_from_mirakurun: bool = False
     edcb_url: Annotated[Url, UrlConstraints(allowed_schemes=['tcp'])] = Url('tcp://127.0.0.1:4510/')
     mirakurun_url: Annotated[Url, UrlConstraints(allowed_schemes=['http', 'https'])] = Url('http://127.0.0.1:40772/')
@@ -194,7 +194,7 @@ class _ServerSettingsGeneral(BaseModel):
         if type(info.context) is dict and info.context.get('bypass_validation') is True:
             return mirakurun_url
         # Mirakurun バックエンドの接続確認
-        if info.data.get('backend') == 'Mirakurun' or info.data.get('always_receive_tv_from_mirakurun') is True:
+        if info.data.get('backend') in ('Mirakurun', 'Mirakc') or info.data.get('always_receive_tv_from_mirakurun') is True:
             # 試しにリクエストを送り、200 (OK) が返ってきたときだけ有効な URL とみなす
             try:
                 response = httpx.get(
@@ -231,6 +231,8 @@ class _ServerSettingsGeneral(BaseModel):
                     f'{mirakurun_url} は {mirakurun_or_mirakc} の URL ではありません。\n'
                     f'{mirakurun_or_mirakc} の URL を間違えている可能性があります。'
                 )
+            if info.data.get('backend') == 'Mirakc' and mirakurun_or_mirakc != 'mirakc':
+                raise ValueError('MirakcバックエンドにはmirakcのURLを指定してください。')
             from app import logging
             logging.info(f'Backend: {mirakurun_or_mirakc} {version_info} ({mirakurun_url})')
             if info.data.get('always_receive_tv_from_mirakurun') is True:

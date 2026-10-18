@@ -107,7 +107,7 @@ class Channel(TortoiseModel):
 
         try:
             # Mirakurun バックエンド
-            if Config().general.backend == 'Mirakurun':
+            if Config().general.backend in ('Mirakurun', 'Mirakc'):
                 await cls.updateFromMirakurun()
 
             # EDCB バックエンド

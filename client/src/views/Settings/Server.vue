@@ -23,12 +23,12 @@
             <div class="settings__item">
                 <div class="settings__item-heading">利用するバックエンド</div>
                 <div class="settings__item-label">
-                    EDCB・Mirakurun のいずれかを選択してください。<br>
-                    バックエンドに Mirakurun が選択されているときは、録画予約機能は利用できません。<br>
+                    EDCB・Mirakurun・Mirakcのいずれかを選択してください。<br>
+                    録画予約機能は現在EDCBバックエンドで利用できます。<br>
                 </div>
                 <v-select class="settings__item-form" color="primary" variant="outlined" hide-details
                     :density="is_form_dense ? 'compact' : 'default'"
-                    :items="['EDCB', 'Mirakurun']" v-model="server_settings.general.backend">
+                    :items="['EDCB', 'Mirakurun', 'Mirakc']" v-model="server_settings.general.backend">
                 </v-select>
             </div>
             <div class="settings__item">
@@ -49,7 +49,7 @@
             <div class="settings__item">
                 <div class="settings__item-heading">Mirakurun / mirakc の HTTP API の URL</div>
                 <div class="settings__item-label">
-                    バックエンドに Mirakurun が選択されているときに利用されます。<br>
+                    バックエンドにMirakurunまたはMirakcが選択されているときに利用されます。<br>
                 </div>
                 <div class="settings__item-label mt-1">
                     一部 Windows 環境では localhost の名前解決が遅いため、ストリーミング開始までの待機時間が長くなる場合があります。
@@ -152,7 +152,7 @@
                 <label class="settings__item-heading" for="always_receive_tv_from_mirakurun">常に Mirakurun / mirakc から放送波を受信する</label>
                 <label class="settings__item-label" for="always_receive_tv_from_mirakurun">
                     利用するバックエンドが EDCB のとき、常に Mirakurun / mirakc から放送波を受信するかを設定します。
-                    バックエンドに Mirakurun が選択されているときは効果がありません。<br>
+                    バックエンドにMirakurunまたはMirakcが選択されているときは効果がありません。<br>
                     <div class="mt-1"></div>
                     KonomiTV から EDCB と Mirakurun / mirakc 両方にアクセスできる必要があります。<br>
                     EDCB はチューナー起動やチャンネル切り替えに時間がかかるため、Mirakurun / mirakc が利用できる環境であれば、この設定を有効にするとより快適に使えます。<br>

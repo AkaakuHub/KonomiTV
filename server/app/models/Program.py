@@ -85,7 +85,7 @@ class Program(TortoiseModel):
             should_wait_executor = True
             try:
                 # Mirakurun バックエンド
-                if Config().general.backend == 'Mirakurun':
+                if Config().general.backend in ('Mirakurun', 'Mirakc'):
                     await loop.run_in_executor(executor, cls.updateFromMirakurunForMultiProcess)
 
                 # EDCB バックエンド
@@ -119,7 +119,7 @@ class Program(TortoiseModel):
         else:
             try:
                 # Mirakurun バックエンド
-                if Config().general.backend == 'Mirakurun':
+                if Config().general.backend in ('Mirakurun', 'Mirakc'):
                     await cls.updateFromMirakurun()
 
                 # EDCB バックエンド

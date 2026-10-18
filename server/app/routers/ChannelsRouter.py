@@ -435,7 +435,7 @@ async def ChannelLogoAPI(
                 return (logo, logo_media_type)
 
         # Mirakurun バックエンドの場合
-        elif Config().general.backend == 'Mirakurun':
+        elif Config().general.backend in ('Mirakurun', 'Mirakc'):
 
             # Mirakurun 形式のサービス ID
             # NID と SID を 5 桁でゼロ埋めした上で int に変換する

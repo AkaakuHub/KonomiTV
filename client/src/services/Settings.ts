@@ -110,7 +110,7 @@ export interface IClientSettings {
  */
 export interface IServerSettings {
     general: {
-        backend: 'EDCB' | 'Mirakurun';
+        backend: 'EDCB' | 'Mirakurun' | 'Mirakc';
         always_receive_tv_from_mirakurun: boolean;
         edcb_url: string;
         mirakurun_url: string;
