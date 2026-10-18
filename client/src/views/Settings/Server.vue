@@ -24,7 +24,7 @@
                 <div class="settings__item-heading">利用するバックエンド</div>
                 <div class="settings__item-label">
                     EDCB・Mirakurun・Mirakcのいずれかを選択してください。<br>
-                    録画予約機能は現在EDCBバックエンドで利用できます。<br>
+                    録画予約機能はEDCBまたはMirakcバックエンドで利用できます。<br>
                 </div>
                 <v-select class="settings__item-form" color="primary" variant="outlined" hide-details
                     :density="is_form_dense ? 'compact' : 'default'"

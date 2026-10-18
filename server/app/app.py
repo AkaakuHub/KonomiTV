@@ -29,6 +29,7 @@ from app.routers import (
     DataBroadcastingRouter,
     LiveStreamsRouter,
     MaintenanceRouter,
+    MirakcRecordingPresetsRouter,
     MirakcReservationsRouter,
     NiconicoRouter,
     ProgramsRouter,
@@ -76,7 +77,7 @@ app.include_router(LiveStreamsRouter.router)
 app.include_router(VideoStreamsRouter.router)
 app.include_router(MirakcReservationsRouter.router if CONFIG.general.backend == 'Mirakc' else ReservationsRouter.router)
 app.include_router(ReservationConditionsRouter.router)
-app.include_router(RecordingPresetsRouter.router)
+app.include_router(MirakcRecordingPresetsRouter.router if CONFIG.general.backend == 'Mirakc' else RecordingPresetsRouter.router)
 app.include_router(CapturesRouter.router)
 app.include_router(DataBroadcastingRouter.router)
 app.include_router(NiconicoRouter.router)

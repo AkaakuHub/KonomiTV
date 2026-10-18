@@ -1,6 +1,6 @@
 
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import Settings, { type IServerSettings, IServerSettingsDefault } from '@/services/Settings';
 
@@ -16,6 +16,9 @@ const useServerSettingsStore = defineStore('serverSettings', () => {
     // 読み込み状態
     const is_loaded = ref(false);
     const is_loading = ref(false);
+
+    const supportsReservations = computed(() => is_loaded.value &&
+        ['EDCB', 'Mirakc'].includes(server_settings.value.general.backend));
 
     // 進行中の取得 Promise を保持
     let fetch_promise: Promise<IServerSettings | null> | null = null;
@@ -54,6 +57,7 @@ const useServerSettingsStore = defineStore('serverSettings', () => {
 
     return {
         server_settings,
+        supportsReservations,
         is_loaded,
         is_loading,
         fetchServerSettingsOnce,

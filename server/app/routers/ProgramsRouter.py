@@ -11,7 +11,7 @@ from tortoise import connections
 
 from app import logging, schemas
 from app.config import Config
-from app.constants import JST
+from app.constants import HTTPX_CLIENT, JST
 from app.models.Channel import Channel
 from app.routers.ReservationConditionsRouter import EncodeEDCBSearchKeyInfo
 from app.routers.ReservationsRouter import GetCtrlCmdUtil
@@ -19,6 +19,7 @@ from app.utils import NormalizeToJSTDatetime, ParseDatetimeStringToJST
 from app.utils.edcb import EventInfo, ReserveDataRequired, SearchKeyInfo
 from app.utils.edcb.CtrlCmdUtil import CtrlCmdUtil
 from app.utils.edcb.EDCBUtil import EDCBUtil
+from app.utils.mirakc.RecordingClient import MirakcRecordingClient
 from app.utils.TSInformation import TSInformation
 
 
@@ -646,6 +647,20 @@ async def TimeTableAPI(
         except Exception as ex:
             # 予約情報の取得に失敗しても番組表自体は返す
             logging.warning('[ProgramsRouter][TimeTableAPI] Failed to get reservations:', exc_info=ex)
+
+    elif Config().general.backend == 'Mirakc':
+        async with HTTPX_CLIENT() as client:
+            schedules = await MirakcRecordingClient(client, str(Config().general.mirakurun_url)).listSchedules()
+        for schedule in schedules:
+            if schedule.state in ('finished', 'failed'):
+                continue
+            source = schedule.program
+            program_id = f'NID{source.network_id}-SID{source.service_id:03d}-EID{source.event_id}'
+            reservations_by_program_id[program_id] = schemas.TimeTableProgramReservation(
+                id=source.id,
+                status='Recording' if schedule.state == 'recording' else 'Reserved',
+                recording_availability='Unknown',
+            ).model_dump()
 
     # チャンネルごとに番組をグループ化
     programs_by_channel: dict[str, list[dict[str, Any]]] = {c['id']: [] for c in channels_result}
