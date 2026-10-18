@@ -486,7 +486,7 @@ class LiveEncodingTask:
         """
 
         CONFIG = Config()
-        BACKEND_TYPE: Literal['EDCB', 'Mirakurun'] = 'Mirakurun' if CONFIG.general.always_receive_tv_from_mirakurun is True else CONFIG.general.backend
+        BACKEND_TYPE: Literal['EDCB', 'Mirakurun'] = 'EDCB' if CONFIG.general.backend == 'EDCB' and CONFIG.general.always_receive_tv_from_mirakurun is False else 'Mirakurun'
         assert BACKEND_TYPE == 'Mirakurun', 'This method is only for Mirakurun backend.'
 
         # Mirakurun / mirakc は通常チャンネルタイプが GR, BS, CS, SKY しかないので、
@@ -556,7 +556,7 @@ class LiveEncodingTask:
 
         # バックエンドの種類を取得
         ## always_receive_tv_from_mirakurun が True なら、バックエンドに関わらず常に Mirakurun / mirakc から受信する
-        BACKEND_TYPE: Literal['EDCB', 'Mirakurun'] = 'Mirakurun' if CONFIG.general.always_receive_tv_from_mirakurun is True else CONFIG.general.backend
+        BACKEND_TYPE: Literal['EDCB', 'Mirakurun'] = 'EDCB' if CONFIG.general.backend == 'EDCB' and CONFIG.general.always_receive_tv_from_mirakurun is False else 'Mirakurun'
 
         # エンコーダーの種類を取得
         ENCODER_TYPE = CONFIG.general.encoder
