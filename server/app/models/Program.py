@@ -383,9 +383,9 @@ class Program(TortoiseModel):
                     program.video_codec = None
                     program.video_resolution = None
                     if 'video' in program_info:
-                        if program_info['video']['streamContent'] is not None:
-                            program.video_type = ariblib.constants.COMPONENT_TYPE \
-                                [program_info['video']['streamContent']].get(program_info['video']['componentType'], 'Unknown')
+                        component_types = ariblib.constants.COMPONENT_TYPE.get(program_info['video']['streamContent'])
+                        if component_types is not None:
+                            program.video_type = component_types.get(program_info['video']['componentType'], 'Unknown')
                         else:
                             program.video_type = 'Unknown'
                         program.video_codec = program_info['video']['type']
