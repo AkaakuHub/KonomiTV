@@ -42,10 +42,10 @@ export interface IReservation {
     channel: IChannel;
     program: IProgram;
     is_recording_in_progress: boolean;
-    recording_availability: 'Full' | 'Partial' | 'Unavailable';
+    recording_availability: 'Full' | 'Partial' | 'Unavailable' | 'Unknown';
     comment: string;
     scheduled_recording_file_name: string;
-    estimated_recording_file_size: number;
+    estimated_recording_file_size: number | null;
     record_settings: IRecordSettings;
 }
 
