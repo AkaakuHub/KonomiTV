@@ -1028,6 +1028,10 @@ class LiveEncodingTask:
 
                 except OSError:
                     pass
+                except aiohttp.ClientError:
+                    # mirakcの終了処理でHTTP接続を閉じた場合は、Readerも正常に終了させる
+                    if CONFIG.general.backend != 'Mirakc' or is_running is True:
+                        raise
 
                 # タスクを終える前に、チューナーとの接続を明示的に閉じる
                 try:
@@ -1566,6 +1570,12 @@ class LiveEncodingTask:
             encoder.kill()
         except Exception:
             pass
+
+        # Readerの自然終了を待たずにHTTP接続を閉じ、mirakcのチューナーを解放する
+        if CONFIG.general.backend == 'Mirakc' and session is not None:
+            if response is not None:
+                response.close()
+            await session.close()
 
         # すべての視聴中クライアントのライブストリームへの接続を切断する
         self.live_stream.disconnectAll()
