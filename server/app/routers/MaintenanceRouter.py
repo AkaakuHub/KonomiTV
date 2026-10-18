@@ -10,16 +10,19 @@ from collections.abc import Coroutine
 from typing import Annotated, Any, Literal
 
 import anyio
+import httpx
 import psutil
 from fastapi import APIRouter, Depends, Path, Request, status
 from fastapi.exceptions import HTTPException
 from fastapi.responses import Response
 from fastapi.security import OAuth2PasswordBearer
+from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
 from app import logging, schemas
 from app.config import Config
 from app.constants import (
+    HTTPX_CLIENT,
     KONOMITV_ACCESS_LOG_PATH,
     KONOMITV_SERVER_LOG_PATH,
     RESTART_REQUIRED_LOCK_PATH,
@@ -34,6 +37,7 @@ from app.models.RecordedProgram import RecordedProgram
 from app.models.RecordedVideo import RecordedVideo
 from app.models.User import User
 from app.routers.UsersRouter import GetCurrentAdminUser, GetCurrentUser
+from app.utils import GetMirakurunAPIEndpointURL
 
 
 # ルーター
@@ -159,6 +163,45 @@ def LogStreamAPI(
 
     # EventSourceResponse でイベントストリームを配信する
     return EventSourceResponse(generator())
+
+
+class EPGUpdateStatus(BaseModel):
+    status: Literal['started', 'running']
+
+
+@router.post(
+    '/update-epg',
+    summary = '番組表収集開始 API',
+    response_model = EPGUpdateStatus,
+    status_code = status.HTTP_202_ACCEPTED,
+    responses = {status.HTTP_200_OK: {'description': '番組表を収集中。'}},
+)
+async def UpdateEPGAPI(response: Response) -> EPGUpdateStatus:
+    """Mirakcで放送波からの番組表収集を開始する。収集結果は通常の番組情報更新時に反映される。"""
+
+    if Config().general.backend != 'Mirakc':
+        raise HTTPException(
+            status_code = status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail = 'EPG collection is only available with the Mirakc backend',
+        )
+
+    try:
+        async with HTTPX_CLIENT() as client:
+            result = await client.post(GetMirakurunAPIEndpointURL('/api/jobs/update-schedules'))
+        result.raise_for_status()
+        update_status = EPGUpdateStatus.model_validate_json(result.content)
+        expected_status = status.HTTP_202_ACCEPTED if update_status.status == 'started' else status.HTTP_200_OK
+        if result.status_code != expected_status:
+            raise ValueError('Unexpected EPG collection response status')
+    except (httpx.HTTPError, ValueError) as ex:
+        logging.error('[MaintenanceRouter][UpdateEPGAPI] Failed to start EPG collection:', exc_info=ex)
+        raise HTTPException(
+            status_code = status.HTTP_502_BAD_GATEWAY,
+            detail = 'Failed to start EPG collection',
+        ) from ex
+
+    response.status_code = result.status_code
+    return update_status
 
 
 @router.post(

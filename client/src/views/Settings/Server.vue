@@ -345,6 +345,20 @@
                 <span class="ml-2">サーバーログを表示</span>
             </v-btn>
         </div>
+        <div class="settings__content" v-if="server_settings_store.is_loaded && server_settings_store.server_settings.general.backend === 'Mirakc'">
+            <div class="settings__item">
+                <div class="settings__item-heading">放送波から番組表を収集</div>
+                <div class="settings__item-label">
+                    Mirakcのチューナーで番組表を収集します。収集中の場合は、そのまま収集を続けます。<br>
+                    収集には時間がかかります。取得した番組情報は、設定した更新間隔で番組表に反映されます。<br>
+                </div>
+            </div>
+            <v-btn class="settings__save-button mt-5" color="background-lighten-2" variant="flat"
+                :loading="is_epg_collection_starting" @click="updateEPG()">
+                <Icon icon="fluent:arrow-clockwise-20-filled" height="20px" />
+                <span class="ml-2">番組表の収集を開始</span>
+            </v-btn>
+        </div>
         <div class="settings__content">
             <div class="settings__item">
                 <div class="settings__item-heading">KonomiTV のデータベースを更新</div>
@@ -432,6 +446,7 @@ import Message from '@/message';
 import Maintenance from '@/services/Maintenance';
 import Settings, { IServerSettings, IServerSettingsDefault } from '@/services/Settings';
 import Version from '@/services/Version';
+import useServerSettingsStore from '@/stores/ServerSettingsStore';
 import useUserStore from '@/stores/UserStore';
 import Utils from '@/utils';
 import SettingsBase from '@/views/Settings/Base.vue';
@@ -506,9 +521,12 @@ user_store.fetchUser().then((user) => {
     }
 });
 
+const server_settings_store = useServerSettingsStore();
+const is_epg_collection_starting = ref(false);
+
 // サーバー設定を取得
 const server_settings = ref<IServerSettings>(structuredClone(IServerSettingsDefault));
-Settings.fetchServerSettings().then((settings) => {
+server_settings_store.fetchServerSettingsOnce().then((settings) => {
     if (settings) {
         server_settings.value = settings;
     }
@@ -540,6 +558,20 @@ async function updateServerSettings() {
 const account_manage_settings_modal = ref(false);
 // サーバーログダイアログの表示状態
 const server_log_dialog = ref(false);
+
+async function updateEPG() {
+    is_epg_collection_starting.value = true;
+    try {
+        const result = await Maintenance.updateEPG();
+        if (result?.status === 'started') {
+            Message.success('番組表の収集を開始しました。取得した番組情報は順次反映されます。');
+        } else if (result?.status === 'running') {
+            Message.info('番組表はすでに収集中です。取得した番組情報は順次反映されます。');
+        }
+    } finally {
+        is_epg_collection_starting.value = false;
+    }
+}
 
 // データベースを更新する関数
 async function updateDatabase() {
