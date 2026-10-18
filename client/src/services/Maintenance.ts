@@ -6,6 +6,11 @@ import APIClient from '@/services/APIClient';
 import Utils from '@/utils';
 
 
+export interface IEPGUpdateStatus {
+    status: 'started' | 'running';
+}
+
+
 class Maintenance {
 
     /**
@@ -65,6 +70,16 @@ class Maintenance {
         });
 
         return abort_controller;
+    }
+
+
+    static async updateEPG(): Promise<IEPGUpdateStatus | null> {
+        const response = await APIClient.post<IEPGUpdateStatus>('/maintenance/update-epg');
+        if (response.type === 'error') {
+            APIClient.showGenericError(response, '番組表の収集を開始できませんでした。');
+            return null;
+        }
+        return response.data;
     }
 
 
