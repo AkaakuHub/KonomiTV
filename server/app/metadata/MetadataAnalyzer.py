@@ -124,6 +124,14 @@ class FFprobeOtherStream(BaseModel):
     codec_name: str = 'unknown'  # オプショナル - "arib_caption", "bin_data", そのほか未知のもの
     ts_packetsize: str | None = None  # オプショナル - TS パケットサイズ ("188" / "192" / "204")
 
+class FFprobeVideoFrame(BaseModel):
+    """FFprobeが返す映像フレームの走査方式"""
+    interlaced_frame: Literal[0, 1]
+
+class FFprobeVideoFrames(BaseModel):
+    """FFprobeの映像フレーム解析結果"""
+    frames: list[FFprobeVideoFrame]
+
 class FFprobeProgram(BaseModel):
     """FFprobe から返される program セクションの情報"""
     program_id: int | None = None
@@ -378,16 +386,34 @@ class MetadataAnalyzer:
                     Literal['High', 'High 10', 'Main', 'Main 10', 'Baseline', 'Constrained Baseline'],
                     profile.split('@')[0] if profile else 'Main'
                 )
-                ## スキャン形式
-                field_order = video_stream.field_order or 'tt'  # 通常取得できるはずだが、デフォルトはインターレースとする
-                if field_order.lower() == 'progressive':
-                    video_scan_type = 'Progressive'
+                ## HEVCはfield_orderが欠落する入力でも判定できるよう、復号したフレームの走査方式を確認する
+                if video_stream.codec_name == 'hevc':
+                    frame_json = self.__runFFprobe([
+                        '-v', 'error', '-select_streams', 'v:0', '-read_intervals', '%+5',
+                        '-show_entries', 'frame=interlaced_frame', '-of', 'json', str(self.recorded_file_path),
+                    ])
+                    if frame_json is None:
+                        return None
+                    try:
+                        frames = FFprobeVideoFrames.model_validate(frame_json).frames
+                    except ValueError as ex:
+                        logging.warning(f'{self.recorded_file_path}: Failed to parse video scan type:', exc_info=ex)
+                        return None
+                    if not frames:
+                        logging.warning(f'{self.recorded_file_path}: No video frames to determine scan type. ignored.')
+                        return None
+                    video_scan_type = 'Interlaced' if any(frame.interlaced_frame for frame in frames) else 'Progressive'
                 else:
-                    video_scan_type = 'Interlaced'
-                ## ここで Progressive になっているが、全体解析側の field_order が progressive でない場合はインターレースとする
-                ## (部分解析のみ、稀に本来インターレースにもかかわらずプログレッシブ映像と判定される場合があるため)
-                if video_scan_type == 'Progressive' and (full_probe_video_streams[0].field_order or '').lower() != 'progressive':
-                    video_scan_type = 'Interlaced'
+                    ## スキャン形式
+                    field_order = video_stream.field_order or 'tt'  # 通常取得できるはずだが、デフォルトはインターレースとする
+                    if field_order.lower() == 'progressive':
+                        video_scan_type = 'Progressive'
+                    else:
+                        video_scan_type = 'Interlaced'
+                    ## ここで Progressive になっているが、全体解析側の field_order が progressive でない場合はインターレースとする
+                    ## (部分解析のみ、稀に本来インターレースにもかかわらずプログレッシブ映像と判定される場合があるため)
+                    if video_scan_type == 'Progressive' and (full_probe_video_streams[0].field_order or '').lower() != 'progressive':
+                        video_scan_type = 'Interlaced'
                 ## フレームレート
                 video_frame_rate = ParseFPS(video_stream.avg_frame_rate) or ParseFPS(video_stream.r_frame_rate)
                 ## 解像度
