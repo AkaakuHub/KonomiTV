@@ -992,13 +992,15 @@ class TSInfoAnalyzer:
                     # 対象 PID 以外のセクションデータは無視
                     dict[i] = buf if pids[i] in target_pids else None
 
-            for i in range(dictionary_window_len - dictionary_len):
-                if i >= len(last_pids):
-                    return False
+            for i in range(len(last_pids)):
+                if len(pids) == dictionary_window_len:
+                    break
                 # 前回辞書のうち未参照のものを引き継ぐ
                 if last_pids[i] >= 0:
                     pids.append(last_pids[i])
                     dict.append(last_dict[i])
+            if len(pids) != dictionary_window_len:
+                return False
             last_pids = pids
             last_dict = dict
             # 残りは読み飛ばす
