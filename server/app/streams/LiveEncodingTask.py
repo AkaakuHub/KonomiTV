@@ -489,14 +489,6 @@ class LiveEncodingTask:
         BACKEND_TYPE: Literal['EDCB', 'Mirakurun'] = 'Mirakurun' if CONFIG.general.always_receive_tv_from_mirakurun is True else CONFIG.general.backend
         assert BACKEND_TYPE == 'Mirakurun', 'This method is only for Mirakurun backend.'
 
-        # Mirakurun / mirakc は通常チャンネルタイプが GR, BS, CS, SKY しかないので、
-        # フォールバックとして BS4K を BS に、CATV を CS に変換する
-        fallback_channel_type = channel_type
-        if channel_type == 'BS4K':
-            fallback_channel_type = 'BS'
-        elif channel_type == 'CATV':
-            fallback_channel_type = 'CS'
-
         mirakurun_or_mirakc = 'Mirakurun'
         async with HTTPX_CLIENT() as client:
 
@@ -531,14 +523,6 @@ class LiveEncodingTask:
                             f'Type: {channel_type} / Acquired in {round(time.time() - start_time, 2)} seconds'
                         )
                         return True
-                    if tuner['isAvailable'] is True and tuner['isFree'] is True and fallback_channel_type in tuner['types']:
-                        logging.info(f'{self.live_stream.log_prefix} Acquired a tuner from {mirakurun_or_mirakc}. ({channel_type} -> {fallback_channel_type})')
-                        logging.info(
-                            f'{self.live_stream.log_prefix} Tuner: {tuner["name"]} / '
-                            f'Type: {fallback_channel_type} / Acquired in {round(time.time() - start_time, 2)} seconds'
-                        )
-                        return True
-
                 await asyncio.sleep(0.1)
 
         # 空きチューナーは確保できなかったが、同じチャンネルが受信中であれば共聴することは可能なので warning に留める
