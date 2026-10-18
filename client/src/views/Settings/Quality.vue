@@ -29,9 +29,8 @@
                     視聴中はプレイヤーの設定からいつでも変更できますが、次回視聴時はここで設定した画質に戻ります。<br>
                 </div>
                 <div class="settings__item-label mt-2">
-                    画質を [Original (MPEG-2)] に設定すると、<b>放送波の MPEG-2 を再エンコードせず直接 60fps で再生できます！</b><br>
-                    <b>再生遅延・選局待ち時間・サーバー負荷を大幅に削減できるため、家の Wi-Fi で観るときにおすすめです。</b><br>
-                    （ ⚠️ 最大 20Mbps の TS を直接ストリーミングするため、屋外で使うとパケ代が大変なことになります）<br>
+                    画質を [Original] に設定すると、<b>放送波のMPEG-2・HEVCをサーバーで再エンコードせず再生できます。</b><br>
+                    解像度・フレームレート・通信量は放送によって異なります。HEVCの再生には対応したブラウザと端末が必要です。<br>
                     実験的機能のため、微妙にカクついたり、低スペックな端末では再生が重くなる可能性があります。<br>
                 </div>
                 <div class="settings__item-label mt-2">
@@ -237,23 +236,20 @@ const MOBILE_ORIGINAL_QUALITY_WARNING_MESSAGE =
 
 /**
  * 通信節約モードの状態に応じた画質選択肢を生成する
- * 通信節約モードオン時は H.265 のビットレート表記を使い、Original (MPEG-2) は disabled 状態で表示する
+ * ライブのOriginalは通信節約モードに関係なく放送画質を使用する
  */
-function buildQualityItems(data_saver_mode: boolean): QualitySelectItem[] {
-    if (data_saver_mode === false) {
-        return QUALITY_H264;
-    }
-
+function buildQualityItems(data_saver_mode: boolean, is_live: boolean): QualitySelectItem[] {
     return QUALITY_H264.map((item) => {
         if (item.value === 'original') {
             return {
                 ...item,
-                props: { disabled: true },
+                title: is_live ? 'Original (放送画質・通信量は放送により異なります)' : item.title,
+                props: { disabled: is_live === false && data_saver_mode },
             };
         }
 
         return {
-            title: QUALITY_H265_TITLES[item.value],
+            title: data_saver_mode ? QUALITY_H265_TITLES[item.value] : item.title,
             value: item.value,
         };
     });
@@ -286,33 +282,21 @@ export default defineComponent({
 
         // テレビのデフォルトのストリーミング画質の選択肢
         tv_streaming_quality(): QualitySelectItem[] {
-            return buildQualityItems(this.settingsStore.settings.tv_data_saver_mode);
+            return buildQualityItems(this.settingsStore.settings.tv_data_saver_mode, true);
         },
         tv_streaming_quality_cellular(): QualitySelectItem[] {
-            return buildQualityItems(this.settingsStore.settings.tv_data_saver_mode_cellular);
+            return buildQualityItems(this.settingsStore.settings.tv_data_saver_mode_cellular, true);
         },
 
         // ビデオのデフォルトのストリーミング画質の選択肢
         video_streaming_quality(): QualitySelectItem[] {
-            return buildQualityItems(this.settingsStore.settings.video_data_saver_mode);
+            return buildQualityItems(this.settingsStore.settings.video_data_saver_mode, false);
         },
         video_streaming_quality_cellular(): QualitySelectItem[] {
-            return buildQualityItems(this.settingsStore.settings.video_data_saver_mode_cellular);
+            return buildQualityItems(this.settingsStore.settings.video_data_saver_mode_cellular, false);
         },
     },
     watch: {
-        'settingsStore.settings.tv_data_saver_mode': {
-            immediate: true,
-            handler(value: boolean) {
-                this.ensureQualityCompatibleWithDataSaverMode('tv', value);
-            },
-        },
-        'settingsStore.settings.tv_data_saver_mode_cellular': {
-            immediate: true,
-            handler(value: boolean) {
-                this.ensureQualityCompatibleWithDataSaverMode('tv_cellular', value);
-            },
-        },
         'settingsStore.settings.video_data_saver_mode': {
             immediate: true,
             handler(value: boolean) {
@@ -340,7 +324,7 @@ export default defineComponent({
          * @param data_saver_mode 通信節約モードがオンかどうか
          */
         ensureQualityCompatibleWithDataSaverMode(
-            target: 'tv' | 'tv_cellular' | 'video' | 'video_cellular',
+            target: 'video' | 'video_cellular',
             data_saver_mode: boolean,
         ): void {
             if (data_saver_mode === false) {
@@ -348,8 +332,6 @@ export default defineComponent({
             }
 
             const setting_key_map = {
-                tv: 'tv_streaming_quality',
-                tv_cellular: 'tv_streaming_quality_cellular',
                 video: 'video_streaming_quality',
                 video_cellular: 'video_streaming_quality_cellular',
             } as const;
