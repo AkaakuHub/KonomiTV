@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = "==3.13.*"
 
 [[package]]
@@ -130,10 +130,7 @@ wheels = [
 [[package]]
 name = "ariblib"
 version = "0.1.4"
-source = { url = "https://github.com/tsukumijima/ariblib/releases/download/v0.1.4/ariblib-0.1.4-py3-none-any.whl" }
-wheels = [
-    { url = "https://github.com/tsukumijima/ariblib/releases/download/v0.1.4/ariblib-0.1.4-py3-none-any.whl", hash = "sha256:ac3bb62ef2998811c23b00d6d9648dcde4c1df9d4e0c5a79385cb04b0bfb2310" },
-]
+source = { git = "https://github.com/AkaakuHub/ariblib.git?rev=e7eb5b7fe90a08432ae707065ff1d4f27efa7136#e7eb5b7fe90a08432ae707065ff1d4f27efa7136" }
 
 [[package]]
 name = "asyncclick"
@@ -795,7 +792,7 @@ requires-dist = [
     { name = "aerich", specifier = "==0.9.1" },
     { name = "aiofiles", specifier = ">=24.1.0,<25" },
     { name = "aiohttp", specifier = ">=3.12.14,<4" },
-    { name = "ariblib", url = "https://github.com/tsukumijima/ariblib/releases/download/v0.1.4/ariblib-0.1.4-py3-none-any.whl" },
+    { name = "ariblib", git = "https://github.com/AkaakuHub/ariblib.git?rev=e7eb5b7fe90a08432ae707065ff1d4f27efa7136" },
     { name = "atproto", specifier = "==0.0.68" },
     { name = "av", specifier = ">=16.0.1,<17" },
     { name = "bcrypt", specifier = ">=4.3.0,<5" },
