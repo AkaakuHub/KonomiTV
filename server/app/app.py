@@ -44,7 +44,7 @@ from app.routers import (
 )
 from app.streams.LiveStream import LiveStream
 from app.utils.edcb.EDCBTuner import EDCBTuner
-from app.utils.FastAPITaskUtil import repeat_every
+from app.utils.FastAPITaskUtil import StopRepeatedTasks, repeat_every
 
 
 # もし Config() の実行時に AssertionError が発生した場合は、LoadConfig() を実行してサーバー設定データをロードする
@@ -279,6 +279,8 @@ async def Shutdown():
     if cleanup is True:
         return
     cleanup = True
+
+    await StopRepeatedTasks()
 
     # 全てのライブストリームを終了する
     for live_stream in LiveStream.getAllLiveStreams():
