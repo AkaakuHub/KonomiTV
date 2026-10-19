@@ -346,6 +346,7 @@ class _ServerSettingsServer(BaseModel):
 class _ServerSettingsTV(BaseModel):
     preferred_terrestrial_region: TerrestrialRegion | None = None
     max_alive_time: PositiveInt = 10
+    mirakurun_stream_timeout: PositiveInt = 15
     debug_mode_ts_path: FilePath | None = None
 
 class _ServerSettingsVideo(BaseModel):
