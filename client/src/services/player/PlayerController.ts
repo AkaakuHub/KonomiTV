@@ -1444,17 +1444,27 @@ class PlayerController {
                     // 最初の映像が再生可能になった時点で背景と待機表示を解除する
                     let on_canplay_called = false;
                     const mpeg2toh264_player = this.player.plugins.mpeg2toh264;
-                    const startup_timeout_id = window.setTimeout(() => {
+                    let playback_wait_started_at = performance.now();
+                    const startup_check_interval_id = window.setInterval(() => {
                         if (this.destroyed === true || this.player?.plugins.mpeg2toh264 !== mpeg2toh264_player ||
-                            on_canplay_called === true) return;
+                            on_canplay_called === true) {
+                            window.clearInterval(startup_check_interval_id);
+                            return;
+                        }
+                        if (player_store.live_stream_status === 'Standby') {
+                            playback_wait_started_at = performance.now();
+                            return;
+                        }
+                        if (performance.now() - playback_wait_started_at < 15 * 1000) return;
+                        window.clearInterval(startup_check_interval_id);
                         player_store.event_emitter.emit('PlayerRestartRequired', {
                             message: '再生開始までに時間が掛かっています。プレイヤーを再起動しています…',
                         });
-                    }, 15 * 1000);  // 15 秒でタイムアウト
+                    }, 1000);
                     const on_canplay = () => {
                         if (this.player === null || on_canplay_called === true) return;
                         on_canplay_called = true;
-                        window.clearTimeout(startup_timeout_id);
+                        window.clearInterval(startup_check_interval_id);
                         this.player.video.oncanplay = null;
                         this.player.video.oncanplaythrough = null;
                         player_store.is_loading = false;
@@ -1466,7 +1476,7 @@ class PlayerController {
 
                     // 変換処理が失敗した場合は DPlayer のエラー表示を残し、プレイヤーを停止状態にする
                     mpeg2toh264_player.addEventListener('error', () => {
-                        window.clearTimeout(startup_timeout_id);
+                        window.clearInterval(startup_check_interval_id);
                         this.player?.pause();
                     }, {once: true});
                     this.player.play();
