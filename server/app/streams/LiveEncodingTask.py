@@ -824,7 +824,7 @@ class LiveEncodingTask:
                     response = await session.get(
                         url = GetMirakurunAPIEndpointURL(f'/api/services/{mirakurun_service_id}/stream'),
                         headers = {**API_REQUEST_HEADERS, 'X-Mirakurun-Priority': '0'},
-                        timeout = aiohttp.ClientTimeout(connect=15, sock_connect=15, sock_read=15)
+                        timeout = aiohttp.ClientTimeout(connect=15, sock_connect=15, sock_read=CONFIG.tv.mirakurun_stream_timeout)
                     )
                 except (TimeoutError, aiohttp.ClientConnectorError):
 

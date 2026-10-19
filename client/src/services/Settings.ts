@@ -127,6 +127,7 @@ export interface IServerSettings {
     tv: {
         preferred_terrestrial_region: string | null;
         max_alive_time: number;
+        mirakurun_stream_timeout: number;
         debug_mode_ts_path: string | null;
     };
     video: {
@@ -159,6 +160,7 @@ export const IServerSettingsDefault: IServerSettings = {
     tv: {
         preferred_terrestrial_region: null,
         max_alive_time: 10,
+        mirakurun_stream_timeout: 15,
         debug_mode_ts_path: null,
     },
     video: {
