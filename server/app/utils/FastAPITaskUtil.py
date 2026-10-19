@@ -23,6 +23,22 @@ NoArgsNoReturnAnyFuncT = NoArgsNoReturnFuncT | NoArgsNoReturnAsyncFuncT
 ExcArgNoReturnAnyFuncT = ExcArgNoReturnFuncT | ExcArgNoReturnAsyncFuncT
 NoArgsNoReturnDecorator = Callable[[NoArgsNoReturnAnyFuncT], NoArgsNoReturnAsyncFuncT]
 
+_repeated_tasks: set[asyncio.Task[None]] = set()
+
+
+async def StopRepeatedTasks() -> None:
+    """
+    定期実行タスクを停止し、実行中の処理の終了を待つ
+
+    Returns:
+        None: すべての定期実行タスクの終了後に戻る
+    """
+
+    tasks = list(_repeated_tasks)
+    for task in tasks:
+        task.cancel()
+    await asyncio.gather(*tasks, return_exceptions=True)
+
 
 async def _handle_func(func: NoArgsNoReturnAnyFuncT) -> None:
     if asyncio.iscoroutinefunction(func):
@@ -117,7 +133,9 @@ def repeat_every(
                 if on_complete:
                     await _handle_func(on_complete)
 
-            asyncio.ensure_future(loop())  # noqa: RUF006
+            task = asyncio.create_task(loop())
+            _repeated_tasks.add(task)
+            task.add_done_callback(_repeated_tasks.discard)
 
         return wrapped
 
