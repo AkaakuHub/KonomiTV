@@ -50,11 +50,14 @@ class LiveStreamClient:
         ## 最終読み取り時刻から 10 秒経過したクライアントは LiveStream.writeStreamData() でタイムアウトと判断され、削除される
         self._stream_data_read_at: float = time.time()
 
+        # Queueからのデータ到着を待っている間は、読み取り停止として扱わない
+        self._is_waiting_for_stream_data: bool = False
+
 
     @property
-    def stream_data_read_at(self) -> float:
-        """ ストリームデータの最終読み取り時刻のタイミング (読み取り専用) """
-        return self._stream_data_read_at
+    def is_timed_out(self) -> bool:
+        """ ストリームデータの読み取りが10秒以上止まっているかどうか """
+        return not self._is_waiting_for_stream_data and time.time() - self._stream_data_read_at > 10
 
 
     async def readStreamData(self) -> bytes | None:
@@ -73,14 +76,16 @@ class LiveStreamClient:
         if self.client_type != 'mpegts':
             return None
 
-        # ストリームデータの最終読み取り時刻を更新
-        self._stream_data_read_at = time.time()
-
         # Queue から読み取ったストリームデータを返す
+        self._is_waiting_for_stream_data = True
         try:
-            return await self._queue.get()
+            stream_data = await self._queue.get()
+            self._stream_data_read_at = time.time()
+            return stream_data
         except TypeError:
             return None
+        finally:
+            self._is_waiting_for_stream_data = False
 
 
     def writeStreamData(self, stream_data: bytes | None) -> None:
@@ -684,12 +689,9 @@ class LiveStream:
         # 接続している全てのクライアントの Queue にストリームデータを書き込む
         for client in self._clients:
 
-            # タイムアウト秒数は 10 秒
-            timeout = 10
-
             # 最終読み取り時刻を指定秒数過ぎたクライアントはタイムアウトと判断し、クライアントを削除する
             ## 主にネットワークが切断されたなどの理由で発生する
-            if now - client.stream_data_read_at > timeout:
+            if client.is_timed_out:
                 self._clients.remove(client)
                 logging.info(f'{self.log_prefix} Client Disconnected (Timeout). Client ID: {client.client_id}')
                 del client
