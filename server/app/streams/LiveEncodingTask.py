@@ -957,6 +957,7 @@ class LiveEncodingTask:
             ## Unix Time とかではないので注意
             tuner_ts_read_at: float = time.monotonic()
             tuner_ts_read_at_lock = asyncio.Lock()
+            encoder_output_wait_started_at: float = time.time()
 
             async def Reader() -> None:
                 nonlocal tuner_ts_read_at
@@ -1437,7 +1438,7 @@ class LiveEncodingTask:
                     ## 何らかの理由でエンコードが途中で停止した場合、live_stream.write() が実行されなくなることを利用している
                     encoder_ts_read_timeout_onair = \
                         self.ENCODER_TS_READ_TIMEOUT_ONAIR_VCEENCC if ENCODER_TYPE == 'VCEEncC' else self.ENCODER_TS_READ_TIMEOUT_ONAIR
-                    stream_data_last_write_time = time.time() - self.live_stream.getStreamDataWrittenAt()
+                    stream_data_last_write_time = time.time() - max(self.live_stream.getStreamDataWrittenAt(), encoder_output_wait_started_at)
                     if ((live_stream_status.status == 'Standby' and stream_data_last_write_time > self.ENCODER_TS_READ_TIMEOUT_STANDBY) or
                         (live_stream_status.status == 'ONAir' and stream_data_last_write_time > encoder_ts_read_timeout_onair)):
 
