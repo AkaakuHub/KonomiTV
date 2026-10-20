@@ -164,7 +164,7 @@ export interface ITimeTableProgram extends IProgram {
 export interface ITimeTableProgramReservation {
     id: number;
     status: 'Reserved' | 'Recording' | 'Disabled';
-    recording_availability: 'Full' | 'Partial' | 'Unavailable';
+    recording_availability: 'Full' | 'Partial' | 'Unavailable' | 'Unknown';
 }
 
 

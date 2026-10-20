@@ -1,6 +1,6 @@
 
 import APIClient from '@/services/APIClient';
-import { IChannel } from '@/services/Channels';
+import { ChannelType, IChannel } from '@/services/Channels';
 import { IProgram } from '@/services/Programs';
 
 
@@ -23,6 +23,7 @@ export interface IRecordSettings {
     is_oneseg_separate_output_enabled: boolean;
     is_sequential_recording_in_single_file_enabled: boolean;
     forced_tuner_id: number | null;
+    preferred_tuner_name: string | null;
 }
 
 /**
@@ -42,10 +43,10 @@ export interface IReservation {
     channel: IChannel;
     program: IProgram;
     is_recording_in_progress: boolean;
-    recording_availability: 'Full' | 'Partial' | 'Unavailable';
+    recording_availability: 'Full' | 'Partial' | 'Unavailable' | 'Unknown';
     comment: string;
     scheduled_recording_file_name: string;
-    estimated_recording_file_size: number;
+    estimated_recording_file_size: number | null;
     record_settings: IRecordSettings;
 }
 
@@ -55,6 +56,11 @@ export interface IReservation {
 export interface IReservations {
     total: number;
     reservations: IReservation[];
+}
+
+export interface IRecordingTuner {
+    name: string;
+    types: ChannelType[];
 }
 
 /**
@@ -91,7 +97,7 @@ export interface IReservationUpdateRequest {
  * 録画設定プリセット一覧 API のレスポンス
  */
 export interface IRecordSettingsPresets {
-    global_defaults: IRecordSettingsGlobalDefaults;
+    global_defaults: IRecordSettingsGlobalDefaults | null;
     presets: IRecordSettingsPreset[];
 }
 
@@ -136,6 +142,7 @@ export const IRecordSettingsDefault: IRecordSettings = {
     is_oneseg_separate_output_enabled: false,
     is_sequential_recording_in_single_file_enabled: false,
     forced_tuner_id: null,
+    preferred_tuner_name: null,
 };
 
 
@@ -143,6 +150,15 @@ export const IRecordSettingsDefault: IRecordSettings = {
  * 録画予約に関する API 操作を提供するクラス
  */
 class Reservations {
+
+    static async fetchRecordingTuners(): Promise<IRecordingTuner[] | null> {
+        const response = await APIClient.get<IRecordingTuner[]>('/recording/tuners');
+        if (response.type === 'error') {
+            APIClient.showGenericError(response, 'チューナー一覧を取得できませんでした。');
+            return null;
+        }
+        return response.data;
+    }
 
     /**
      * すべての録画予約の情報を取得する
