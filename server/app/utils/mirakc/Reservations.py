@@ -13,10 +13,11 @@ from app.utils.mirakc.RecordingClient import RecordingOptions, RecordingSchedule
 
 def EncodeRecordingOptions(settings: schemas.RecordSettings, program_id: int) -> RecordingOptions:
     defaults = schemas.RecordSettings(is_event_relay_follow_enabled=False)
-    unsupported = settings.model_dump(exclude={'priority', 'preferred_tuner_name'})
-    if unsupported != defaults.model_dump(exclude={'priority', 'preferred_tuner_name'}):
+    unsupported = settings.model_dump(exclude={'is_enabled', 'priority', 'preferred_tuner_name'})
+    if unsupported != defaults.model_dump(exclude={'is_enabled', 'priority', 'preferred_tuner_name'}):
         raise HTTPException(422, 'mirakcで未対応の録画設定が指定されています。')
     return RecordingOptions(
+        disabled=not settings.is_enabled,
         content_path=f'KonomiTV/{program_id}-{uuid4().hex}.ts',
         priority=settings.priority - 3,
         preferred_tuner=settings.preferred_tuner_name,
@@ -56,6 +57,7 @@ async def DecodeRecordingSchedule(schedule: RecordingSchedule) -> schemas.Reserv
         scheduled_recording_file_name=PurePosixPath(schedule.options.content_path).name,
         estimated_recording_file_size=None,
         record_settings=schemas.RecordSettings(
+            is_enabled=not schedule.options.disabled,
             priority=schedule.options.priority + 3,
             preferred_tuner_name=schedule.options.preferred_tuner,
             is_event_relay_follow_enabled=False,

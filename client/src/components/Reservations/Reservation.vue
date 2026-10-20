@@ -24,7 +24,7 @@
                     <div class="reservation__priority-badge">{{ reservation.record_settings.priority }}</div>
                     <div class="reservation__priority-label">優先度</div>
                 </div>
-                <div v-if="!shouldShowProgramSearchAddButton && !reservation.is_recording_in_progress && serverSettingsStore.server_settings.general.backend === 'EDCB'" class="reservation__toggle" @click="handleSwitchClick">
+                <div v-if="!shouldShowProgramSearchAddButton && !reservation.is_recording_in_progress && serverSettingsStore.supportsReservations" class="reservation__toggle" @click="handleSwitchClick">
                     <v-switch
                         v-model="isEnabled"
                         color="primary"
