@@ -759,6 +759,23 @@ async def VideoDownloadAPI(
 
 
 @router.get(
+    '/{video_id}/captions',
+    summary = '録画番組ARIB字幕取得API',
+    response_class = FileResponse,
+    responses = {404: {'description': 'The recorded captions were not found'}},
+)
+async def VideoCaptionsAPI(
+    recorded_program: Annotated[RecordedProgram, Depends(GetRecordedProgram)],
+) -> FileResponse:
+    """指定された録画番組と同名のARIB字幕ファイルを取得する。"""
+
+    captions_path = anyio.Path(recorded_program.recorded_video.file_path).with_suffix('.arib.json')
+    if await captions_path.is_file() is False:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='The recorded captions were not found')
+    return FileResponse(path=captions_path, media_type='application/json')
+
+
+@router.get(
     '/{video_id}/jikkyo',
     summary = '録画番組過去ログコメント API',
     response_description = '録画番組の放送中に投稿されたニコニコ実況の過去ログコメント。',
