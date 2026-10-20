@@ -95,6 +95,27 @@ export interface IProgramSearchCondition {
     duplicate_title_check_period_days: number;
 }
 
+export const IProgramSearchConditionDefault: IProgramSearchCondition = {
+    is_enabled: true,
+    keyword: '',
+    exclude_keyword: '',
+    note: '',
+    is_title_only: false,
+    is_case_sensitive: false,
+    is_fuzzy_search_enabled: false,
+    is_regex_search_enabled: false,
+    service_ranges: null,
+    genre_ranges: null,
+    is_exclude_genre_ranges: false,
+    date_ranges: null,
+    is_exclude_date_ranges: false,
+    duration_range_min: null,
+    duration_range_max: null,
+    broadcast_type: 'All',
+    duplicate_title_check_scope: 'None',
+    duplicate_title_check_period_days: 6,
+};
+
 /**
  * 番組検索条件のチャンネル
  */

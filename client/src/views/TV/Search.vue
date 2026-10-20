@@ -67,7 +67,7 @@ import ProgramSearchFilters from '@/components/Programs/ProgramSearchFilters.vue
 import ReservationList from '@/components/Reservations/ReservationList.vue';
 import SPHeaderBar from '@/components/SPHeaderBar.vue';
 import { IChannel, ILiveChannel } from '@/services/Channels';
-import Programs, { IProgram, IProgramSearchCondition } from '@/services/Programs';
+import Programs, { IProgram, IProgramSearchCondition, IProgramSearchConditionDefault } from '@/services/Programs';
 import Reservations, { IRecordSettings, IRecordSettingsDefault, IReservation } from '@/services/Reservations';
 import useChannelsStore from '@/stores/ChannelsStore';
 import useUserStore from '@/stores/UserStore';
@@ -77,31 +77,8 @@ const route = useRoute();
 const router = useRouter();
 const channelsStore = useChannelsStore();
 
-const createDefaultSearchCondition = (): IProgramSearchCondition => {
-    return {
-        is_enabled: true,
-        keyword: '',
-        exclude_keyword: '',
-        note: '',
-        is_title_only: false,
-        is_case_sensitive: false,
-        is_fuzzy_search_enabled: false,
-        is_regex_search_enabled: false,
-        service_ranges: null,
-        genre_ranges: null,
-        is_exclude_genre_ranges: false,
-        date_ranges: null,
-        is_exclude_date_ranges: false,
-        duration_range_min: null,
-        duration_range_max: null,
-        broadcast_type: 'All',
-        duplicate_title_check_scope: 'None',
-        duplicate_title_check_period_days: 6,
-    };
-};
-
 // 検索条件はフォームと検索 API の両方で共有し、URL にはキーワードとページだけを残す
-const searchCondition = ref<IProgramSearchCondition>(createDefaultSearchCondition());
+const searchCondition = ref<IProgramSearchCondition>(structuredClone(IProgramSearchConditionDefault));
 
 // API 結果は全件保持し、一覧コンポーネント側で30件ずつ表示する
 const programs = ref<IProgram[]>([]);
