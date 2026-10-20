@@ -664,7 +664,7 @@ async def TimeTableAPI(
             program_id = f'NID{source.network_id}-SID{source.service_id:03d}-EID{source.event_id}'
             reservations_by_program_id[program_id] = schemas.TimeTableProgramReservation(
                 id=source.id,
-                status='Recording' if schedule.state == 'recording' else 'Reserved',
+                status='Disabled' if schedule.options.disabled else 'Recording' if schedule.state == 'recording' else 'Reserved',
                 recording_availability='Unknown',
             ).model_dump()
 
