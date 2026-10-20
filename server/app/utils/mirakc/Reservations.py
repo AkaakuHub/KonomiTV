@@ -51,7 +51,7 @@ async def DecodeRecordingSchedule(schedule: RecordingSchedule) -> schemas.Reserv
         program=metadata,
         is_recording_in_progress=schedule.state == 'recording',
         recording_availability='Unknown',
-        comment='',
+        comment='キーワード自動予約' if any(tag.startswith('KonomiTV-Auto:') for tag in schedule.tags) else '',
         scheduled_recording_file_name=PurePosixPath(schedule.options.content_path).name,
         estimated_recording_file_size=None,
         record_settings=schemas.RecordSettings(
