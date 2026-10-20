@@ -18,7 +18,7 @@
     "dependencies": {
         "@github/mini-throttle": "^2.1.1",
         "@microsoft/fetch-event-source": "^2.0.1",
-        "arib-mmt-tlv-ts": "^2.0.2",
+        "arib-mmt-tlv-ts": "git+https://github.com/AkaakuHub/arib-mmt-tlv-ts.git#05d8be25b15481e545ee16f4eaa902efcb02993d",
         "assert": "^2.1.0",
         "axios": "^1.16.0",
         "buffer": "^6.0.3",
@@ -47,6 +47,9 @@
         "vuedraggable": "^4.1.0",
         "vuetify": "~3.7.1",
         "web-bml": "github:tsukumijima/web-bml#47fec53cd66734d6cba0fff3c6dfcfc150043109"
+    },
+    "resolutions": {
+        "arib-mmt-tlv-ts": "git+https://github.com/AkaakuHub/arib-mmt-tlv-ts.git#05d8be25b15481e545ee16f4eaa902efcb02993d"
     },
     "devDependencies": {
         "@babel/types": "^7.25.4",
