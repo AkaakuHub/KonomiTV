@@ -336,6 +336,7 @@ import { computed, nextTick, ref, toRaw, watch } from 'vue';
 import type { ChannelType, ILiveChannel } from '@/services/Channels';
 import type { IProgramSearchCondition, IProgramSearchConditionDate } from '@/services/Programs';
 
+import useServerSettingsStore from '@/stores/ServerSettingsStore';
 import Utils, { ProgramUtils } from '@/utils';
 
 type GenreOption = {
@@ -464,8 +465,8 @@ const channelTypeOptions = computed<ChannelTypeOption[]>(() => {
 });
 
 const selectableChannels = computed(() => {
-    // EDCB の service_list にはトランスポートストリーム ID が必須なので、欠けているチャンネルは候補から外す
-    return props.channels.filter((channel) => channel.transport_stream_id !== null);
+    return props.channels.filter((channel) =>
+        useServerSettingsStore().server_settings.general.backend === 'Mirakc' || channel.transport_stream_id !== null);
 });
 
 const allSelectableServiceKeys = computed(() => {
