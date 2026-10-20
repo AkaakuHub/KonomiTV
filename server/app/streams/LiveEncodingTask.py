@@ -296,6 +296,8 @@ class LiveEncodingTask:
         # 入力ストリームの解析時間
         input_probesize = round(1000 + (self._retry_count * 500))  # リトライ回数に応じて少し増やす
         input_analyze = 1.5 if Config().general.backend == 'Mirakc' else round(0.7 + (self._retry_count * 0.2), 1)
+        if channel_type == 'BS4K':
+            input_probesize += 3000
         if channel_type == 'SKY':
             # スカパー！プレミアムサービスのチャンネルは入力ストリームの解析時間を長めにする (その方がうまくいく)
             ## ほかと違い H.264 コーデックが採用されていることが影響しているのかも
