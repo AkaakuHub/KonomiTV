@@ -52,6 +52,7 @@ class ProgramSearchTest(unittest.TestCase):
     def test_regex_validation_and_exclusion(self) -> None:
         self.assertTrue(self.matches(keyword=r'^映画.*ABC', is_regex_search_enabled=True))
         self.assertFalse(self.matches(keyword='映画', exclude_keyword='A.C', is_regex_search_enabled=True))
+        self.assertFalse(self.matches(exclude_keyword=' ', is_regex_search_enabled=True))
         with self.assertRaises(HTTPException):
             ProgramMatcher(schemas.ProgramSearchCondition(keyword='[', is_regex_search_enabled=True))
 
