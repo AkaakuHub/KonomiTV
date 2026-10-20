@@ -1421,6 +1421,8 @@ class PlayerController {
         // mpegts.js などの DPlayer のプラグインは画質切り替え時に一旦破棄されるため、再度イベントハンドラーを登録する必要がある
         const on_init_or_quality_change = async () => {
             assert(this.player !== null);
+            const current_player = this.player;
+            const current_video = current_player.video;
 
             // ローディング中の背景写真をランダムに変更
             player_store.background_url = PlayerUtils.generatePlayerBackgroundURL();
@@ -1602,7 +1604,8 @@ class PlayerController {
                 const on_canplay = async () => {
 
                     // 重複実行を回避する
-                    if (this.player === null) return;
+                    if (this.destroyed || this.destroying || this.player !== current_player ||
+                        current_player.video !== current_video) return;
                     if (on_canplay_called === true) return;
                     this.player.video.oncanplay = null;
                     this.player.video.oncanplaythrough = null;
@@ -1619,13 +1622,31 @@ class PlayerController {
                     // live_playback_buffer_seconds の値は mpegts.js の liveSyncTargetLatency 設定に渡す値と共通
                     const live_playback_buffer_seconds = this.live_playback_buffer_seconds;  // 毎回取得すると負荷が掛かるのでキャッシュする
                     let current_playback_buffer_sec = this.getPlaybackBufferSeconds();
-                    while (current_playback_buffer_sec < live_playback_buffer_seconds) {
-                        await Utils.sleep(0.1);
-                        current_playback_buffer_sec = this.getPlaybackBufferSeconds();
+                    const buffering_started_at = performance.now();
+                    try {
+                        while (current_playback_buffer_sec < live_playback_buffer_seconds) {
+                            if (this.destroyed || this.destroying || this.player !== current_player ||
+                                current_player.video !== current_video) return;
+                            if (performance.now() - buffering_started_at >= 15 * 1000) {
+                                console.warn('[PlayerController] Startup buffering timed out.', {
+                                    buffered_seconds: current_playback_buffer_sec,
+                                    target_seconds: live_playback_buffer_seconds,
+                                });
+                                player_store.event_emitter.emit('PlayerRestartRequired', {
+                                    message: '再生開始までに時間が掛かっています。プレイヤーを再起動しています…',
+                                });
+                                return;
+                            }
+                            await Utils.sleep(0.1);
+                            current_playback_buffer_sec = this.getPlaybackBufferSeconds();
+                        }
+                    } finally {
+                        current_video.playbackRate = 1;
                     }
+                    if (this.destroyed || this.destroying || this.player !== current_player ||
+                        current_player.video !== current_video) return;
 
                     // 再生バッファ調整のため一旦停止していた再生を再び開始
-                    this.player.video.playbackRate = 1;
                     console.log('\u001b[31m[PlayerController] Buffering completed.');
 
                     // ローディング状態を解除し、映像を表示する
