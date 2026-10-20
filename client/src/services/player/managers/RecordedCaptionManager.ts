@@ -27,6 +27,7 @@ class RecordedCaptionManager implements PlayerManager {
     private renderer: CanvasRenderer | null = null;
     private superimpose_renderer: CanvasRenderer | null = null;
     private packets: ICaptionPacket[] = [];
+    private tracks: TextTrack[] = [];
     private readonly replayCurrentCaptions = () => {
         for (const [identifier, renderer] of [[0x80, this.renderer], [0x81, this.superimpose_renderer]] as const) {
             let current: ICaptionPacket | null = null;
@@ -37,6 +38,14 @@ class RecordedCaptionManager implements PlayerManager {
                 }
             }
             if (current !== null) renderer?.pushRawData(current.pts, current.data);
+        }
+        // 未再生の区間へ直接シークしても、次の字幕で置き換わった字幕が残らないようにする。
+        for (const track of this.tracks) {
+            if (track.cues === null) continue;
+            for (let index = 0; index + 1 < track.cues.length; index++) {
+                const cue = track.cues[index];
+                cue.endTime = Math.min(cue.endTime, track.cues[index + 1].startTime);
+            }
         }
     };
 
@@ -56,10 +65,12 @@ class RecordedCaptionManager implements PlayerManager {
             return;
         }
 
+        const existing_tracks = new Set(Array.from(this.player.video.textTracks));
         const renderer = new CanvasRenderer({
             ...this.player.options.pluginOptions.aribb24,
             data_identifier: 0x80,
             enableAutoInBandMetadataTextTrackDetection: false,
+            useHighResTextTrack: false,
         });
         this.renderer = renderer;
         this.player.plugins.aribb24Caption = renderer;
@@ -72,10 +83,12 @@ class RecordedCaptionManager implements PlayerManager {
                 ...this.player.options.pluginOptions.aribb24,
                 data_identifier: 0x81,
                 enableAutoInBandMetadataTextTrackDetection: false,
+                useHighResTextTrack: false,
             });
             this.player.plugins.aribb24Superimpose = this.superimpose_renderer;
             this.superimpose_renderer.attachMedia(this.player.video);
         }
+        this.tracks = Array.from(this.player.video.textTracks).filter(track => existing_tracks.has(track) === false);
         // aribb24.jsはシーク中に描画を消すため、完了後と字幕再表示時に現在の字幕を再投入する。
         this.player.video.addEventListener('seeked', this.replayCurrentCaptions);
         this.player.on('subtitle_show', this.replayCurrentCaptions);
@@ -116,6 +129,7 @@ class RecordedCaptionManager implements PlayerManager {
         this.renderer = null;
         this.superimpose_renderer = null;
         this.packets = [];
+        this.tracks = [];
     }
 }
 
