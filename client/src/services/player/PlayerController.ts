@@ -18,6 +18,7 @@ import LiveCommentManager from '@/services/player/managers/LiveCommentManager';
 import LiveDataBroadcastingManager from '@/services/player/managers/LiveDataBroadcastingManager';
 import LiveEventManager from '@/services/player/managers/LiveEventManager';
 import MediaSessionManager from '@/services/player/managers/MediaSessionManager';
+import RecordedCaptionManager from '@/services/player/managers/RecordedCaptionManager';
 import PlayerManager from '@/services/player/PlayerManager';
 import Videos, { type IJikkyoComments } from '@/services/Videos';
 import useChannelsStore from '@/stores/ChannelsStore';
@@ -1236,6 +1237,12 @@ class PlayerController {
                 new KeyboardShortcutManager(this.player, this.playback_mode),
                 new MediaSessionManager(this.player, this.playback_mode),
             ];
+        }
+
+        if (this.playback_mode === 'Video' && player_store.is_offline_playback === false &&
+            player_store.recorded_program.recorded_video.status !== 'Recording' &&
+            player_store.recorded_program.recorded_video.container_format === 'MPEG-4') {
+            this.player_managers.push(new RecordedCaptionManager(this.player, player_store.recorded_program.id));
         }
 
         // 登録されている PlayerManager をすべて初期化
