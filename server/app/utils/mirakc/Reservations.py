@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from pathlib import PurePosixPath
+from uuid import uuid4
 
 from fastapi import HTTPException
 
@@ -16,7 +17,7 @@ def EncodeRecordingOptions(settings: schemas.RecordSettings, program_id: int) ->
     if unsupported != defaults.model_dump(exclude={'priority', 'preferred_tuner_name'}):
         raise HTTPException(422, 'mirakcで未対応の録画設定が指定されています。')
     return RecordingOptions(
-        content_path=f'KonomiTV/{program_id}.ts',
+        content_path=f'KonomiTV/{program_id}-{uuid4().hex}.ts',
         priority=settings.priority - 3,
         preferred_tuner=settings.preferred_tuner_name,
         pre_filters=[],
