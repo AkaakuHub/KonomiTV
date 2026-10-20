@@ -1498,7 +1498,8 @@ class PlayerController {
                 // PlayerController 内部なので直接再起動してもいいのだが、PlayerController を再起動させる処理は共通化しておきたい
                 this.player.plugins.mpegts?.on(mpegts.Events.ERROR, async (error_type: string, detail: string) => {
 
-                    if (stop_original_hevc_playback(`再生中にエラーが発生しました。(${error_type}: ${detail})`)) {
+                    if (error_type !== mpegts.ErrorTypes.NETWORK_ERROR &&
+                        stop_original_hevc_playback(`再生中にエラーが発生しました。(${error_type}: ${detail})`)) {
                         return;
                     }
 
@@ -1509,6 +1510,7 @@ class PlayerController {
 
                     // すぐ再起動すると問題があるケースがあるので、少し待機する
                     await Utils.sleep(1);
+                    if (this.destroyed || this.destroying || this.player === null) return;
 
                     // もしこの時点でオフラインの場合、ネットワーク接続の変更による接続切断の可能性が高いので、オンラインになるまで待機する
                     if (navigator.onLine === false) {
@@ -1516,6 +1518,7 @@ class PlayerController {
                         console.warn('\u001b[31m[PlayerController] mpegts.js error event: Network error. Waiting for online...');
                         await Utils.waitUntilOnline();
                     }
+                    if (this.destroyed || this.destroying || this.player === null) return;
 
                     // PlayerController の再起動を要求する
                     console.error('\u001b[31m[PlayerController] mpegts.js error event:', error_type, detail);
@@ -1530,7 +1533,8 @@ class PlayerController {
                 this.player.on('error', async (event: MediaError) => {
 
                     const error = this.player?.video.error;
-                    if (stop_original_hevc_playback(`再生中にエラーが発生しました。(Native: ${error?.code ?? 'unknown'}: ${error?.message ?? 'unknown error'})`)) {
+                    if (error?.code !== MediaError.MEDIA_ERR_NETWORK &&
+                        stop_original_hevc_playback(`再生中にエラーが発生しました。(Native: ${error?.code ?? 'unknown'}: ${error?.message ?? 'unknown error'})`)) {
                         return;
                     }
 
@@ -1541,6 +1545,7 @@ class PlayerController {
 
                     // すぐ再起動すると問題があるケースがあるので、少し待機する
                     await Utils.sleep(1);
+                    if (this.destroyed || this.destroying || this.player === null) return;
 
                     if (this.player.video.error) {
                         console.error('\u001b[31m[PlayerController] HTMLVideoElement error event:', this.player.video.error);
