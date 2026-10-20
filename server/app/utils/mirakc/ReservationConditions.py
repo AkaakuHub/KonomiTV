@@ -43,7 +43,7 @@ async def HasRecordedDuplicate(condition: schemas.ProgramSearchCondition, progra
         return False
     recordings = RecordedProgram.filter(
         title=program.title,
-        start_time__gte=datetime.now(JST) - timedelta(days=condition.duplicate_title_check_period_days),
+        start_time__gt=program.start_time - timedelta(days=condition.duplicate_title_check_period_days),
         recorded_video__status='Recorded',
     )
     if condition.duplicate_title_check_scope == 'SameChannelOnly':
@@ -67,14 +67,23 @@ async def UpdateReservations(client: MirakcRecordingClient) -> None:
             settings = schemas.RecordSettings.model_validate_json(row.record_settings)
             for program in await SearchPrograms(condition):
                 program_id = (program.network_id * 100000 + program.service_id) * 100000 + program.event_id
-                if program_id in schedules or program_id in excluded:
+                existing = schedules.get(program_id)
+                if existing is not None:
+                    if (ConditionTag(row.id) in existing.tags and not existing.options.disabled and
+                        existing.state in ('scheduled', 'tracking', 'rescheduling') and
+                        await HasRecordedDuplicate(condition, program)):
+                        existing.options.disabled = True
+                        schedules[program_id] = await client.updateSchedule(existing)
                     continue
+                if program.start_time < now or program_id in excluded:
+                    continue
+                options = EncodeRecordingOptions(settings, program_id)
                 if await HasRecordedDuplicate(condition, program):
-                    continue
+                    options.disabled = True
                 try:
                     schedule = await client.createSchedule(RecordingScheduleInput(
                         program_id=program_id,
-                        options=EncodeRecordingOptions(settings, program_id),
+                        options=options,
                         tags=['KonomiTV', ConditionTag(row.id)],
                     ))
                     schedules[program_id] = schedule

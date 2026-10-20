@@ -68,8 +68,8 @@ const previewPrograms = ref<IProgram[]>([]);
 const priorityOptions = [1, 2, 3, 4, 5];
 const duplicateOptions = [
     { title: '録画済みでも予約する', value: 'None' },
-    { title: '同じチャンネルで録画済みなら予約しない', value: 'SameChannelOnly' },
-    { title: 'どのチャンネルでも録画済みなら予約しない', value: 'AllChannels' },
+    { title: '同じチャンネルで録画済みなら無効にする', value: 'SameChannelOnly' },
+    { title: 'どのチャンネルでも録画済みなら無効にする', value: 'AllChannels' },
 ];
 const tunerOptions = computed(() => {
     const options: { title: string; value: string | null }[] = [{ title: '自動', value: null }];
