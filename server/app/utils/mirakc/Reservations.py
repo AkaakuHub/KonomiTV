@@ -9,11 +9,18 @@ from app.constants import JST
 from app.models.Channel import Channel
 from app.models.Program import Program
 from app.utils.mirakc.RecordingClient import RecordingOptions, RecordingSchedule
+from app.utils.mirakc.RecordingPaths import (
+    DecodeRecordingFolders,
+    EncodeRecordingFolder,
+)
 
 
-def EncodeRecordingOptions(settings: schemas.RecordSettings, program_id: int) -> RecordingOptions:
+def EncodeRecordingOptions(
+    settings: schemas.RecordSettings, program_id: int, content_path: str | None = None,
+) -> RecordingOptions:
     defaults = schemas.RecordSettings(is_event_relay_follow_enabled=False)
-    supported = {'is_enabled', 'priority', 'preferred_tuner_name', 'recording_start_margin', 'recording_end_margin'}
+    supported = {'is_enabled', 'priority', 'preferred_tuner_name', 'recording_start_margin', 'recording_end_margin',
+                 'recording_folders'}
     unsupported = settings.model_dump(exclude=supported)
     if unsupported != defaults.model_dump(exclude=supported):
         raise HTTPException(422, 'mirakcで未対応の録画設定が指定されています。')
@@ -21,9 +28,11 @@ def EncodeRecordingOptions(settings: schemas.RecordSettings, program_id: int) ->
     end_margin_ms = (settings.recording_end_margin if settings.recording_end_margin is not None else 2) * 1000
     if not all(-2147483648 <= margin <= 2147483647 for margin in (start_margin_ms, end_margin_ms)):
         raise HTTPException(422, '録画マージンがmirakcの対応範囲外です。')
+    folder = EncodeRecordingFolder(settings.recording_folders)
+    filename = PurePosixPath(content_path).name if content_path is not None else f'{program_id}-{uuid4().hex}.ts'
     return RecordingOptions(
         disabled=not settings.is_enabled,
-        content_path=f'KonomiTV/{program_id}-{uuid4().hex}.ts',
+        content_path=str(folder / filename),
         priority=settings.priority - 3,
         preferred_tuner=settings.preferred_tuner_name,
         start_margin_ms=start_margin_ms,
@@ -72,6 +81,7 @@ async def DecodeRecordingSchedule(schedule: RecordingSchedule) -> schemas.Reserv
             is_enabled=not schedule.options.disabled,
             priority=schedule.options.priority + 3,
             preferred_tuner_name=schedule.options.preferred_tuner,
+            recording_folders=DecodeRecordingFolders(schedule.options.content_path),
             recording_start_margin=None if default_margins else start_margin_ms // 1000,
             recording_end_margin=None if default_margins else end_margin_ms // 1000,
             is_event_relay_follow_enabled=False,

@@ -108,6 +108,24 @@
             </v-text-field>
         </div>
 
+        <div v-if="isMirakcBackend" class="reservation-recording-settings__section">
+            <div class="reservation-recording-settings__label">録画先のサブフォルダー</div>
+            <div class="reservation-recording-settings__description">
+                KonomiTVの録画フォルダー内に保存します。例: アニメ/2026年秋<br>
+                空欄にすると、KonomiTVの録画フォルダーへ直接保存します。絶対パスや「..」は指定できません。
+            </div>
+            <v-text-field
+                :disabled="reservation.is_recording_in_progress"
+                v-model="recordingFolderPath"
+                color="primary"
+                variant="outlined"
+                density="compact"
+                hide-details
+                placeholder="アニメ/2026年秋"
+                @update:model-value="handleChange">
+            </v-text-field>
+        </div>
+
         <!-- 録画ファイル名テンプレート -->
         <div v-if="isEDCBBackend" class="reservation-recording-settings__section">
             <div class="reservation-recording-settings__label">録画ファイル名テンプレート (マクロ)</div>
