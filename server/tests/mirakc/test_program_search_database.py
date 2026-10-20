@@ -1,5 +1,7 @@
+import asyncio
 import unittest
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
 from test_program_search import MakeProgram
 from tortoise import Tortoise
@@ -8,7 +10,7 @@ from app import schemas
 from app.constants import DATABASE_CONFIG, JST
 from app.models.Channel import Channel
 from app.models.Program import Program
-from app.utils.mirakc.ProgramSearch import SearchPrograms
+from app.utils.mirakc.ProgramSearch import ProgramMatcher, SearchPrograms
 
 
 class ProgramSearchDatabaseTest(unittest.IsolatedAsyncioTestCase):
@@ -42,6 +44,28 @@ class ProgramSearchDatabaseTest(unittest.IsolatedAsyncioTestCase):
     async def test_empty_keyword_keeps_all_programs(self) -> None:
         programs = await SearchPrograms(schemas.ProgramSearchCondition())
         self.assertEqual([program.event_id for program in programs], list(range(300)))
+
+    async def test_other_database_requests_finish_during_search(self) -> None:
+        matching_started = asyncio.Event()
+        original_matches = ProgramMatcher.matches
+
+        def Matches(matcher: ProgramMatcher, program: schemas.Program) -> bool:
+            matching_started.set()
+            return original_matches(matcher, program)
+
+        async def ReadPrograms() -> int:
+            await matching_started.wait()
+            return await Program.all().count()
+
+        other_request = asyncio.create_task(ReadPrograms())
+        try:
+            with patch.object(ProgramMatcher, 'matches', Matches):
+                await SearchPrograms(schemas.ProgramSearchCondition(keyword='映画'))
+            self.assertTrue(other_request.done())
+            self.assertEqual(await other_request, 300)
+        finally:
+            other_request.cancel()
+            await asyncio.gather(other_request, return_exceptions=True)
 
 
 if __name__ == '__main__':
