@@ -69,6 +69,8 @@ class LiveDataBroadcastingManager implements PlayerManager {
     // PSI/SI アーカイブデータデコーダーのインスタンス
     private live_psi_archived_data_decoder: Comlink.Remote<ILivePSIArchivedDataDecoder> | null = null;
 
+    private decoder_generation = 0;
+
     /**
      * コンストラクタ
      * @param player DPlayer のインスタンス
@@ -92,6 +94,7 @@ class LiveDataBroadcastingManager implements PlayerManager {
      * ref: https://github.com/xtne6f/EDCB/blob/work-plus-s-230212/ini/HttpPublic/legacy/util.lua#L444-L497
      */
     public async init(): Promise<void> {
+        const decoder_generation = ++this.decoder_generation;
         const channels_store = useChannelsStore();
 
         const is_data_broadcasting_enabled = useSettingsStore().settings.tv_show_data_broadcasting;
@@ -410,11 +413,17 @@ class LiveDataBroadcastingManager implements PlayerManager {
         // ライブ PSI/SI アーカイブデータデコーダーを初期化
         // Comlink を挟んでいる関係上、コンストラクタにも関わらず Promise を返すため await する必要がある
         const api_quality = PlayerUtils.extractLiveAPIQualityFromDPlayer(this.player);
-        this.live_psi_archived_data_decoder = await new LivePSIArchivedDataDecoderProxy(channels_store.channel.current, api_quality);
+        const decoder = await new LivePSIArchivedDataDecoderProxy(channels_store.channel.current, api_quality);
+        if (this.decoder_generation !== decoder_generation) {
+            decoder.destroy();
+            return;
+        }
+        this.live_psi_archived_data_decoder = decoder;
 
         // デコードを開始
         // デコーダーは Web Worker 上で実行される (コールバックを Comlink.proxy() で包むのがポイント)
         this.live_psi_archived_data_decoder.run(Comlink.proxy(async (message) => {
+            if (this.decoder_generation !== decoder_generation) return;
 
             // データ放送有効時のみ
             if (this.#bml_browser !== null) {
@@ -716,6 +725,7 @@ class LiveDataBroadcastingManager implements PlayerManager {
      * LiveDataBroadcastingManager での処理を終了し、破棄する
      */
     public async destroy(): Promise<void> {
+        this.decoder_generation++;
         const channels_store = useChannelsStore();
 
         // ライブ PSI/SI アーカイブデータデコーダーを終了
