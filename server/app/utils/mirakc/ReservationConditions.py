@@ -73,7 +73,12 @@ async def UpdateReservations(client: MirakcRecordingClient) -> None:
                         existing.state in ('scheduled', 'tracking', 'rescheduling') and
                         await HasRecordedDuplicate(condition, program)):
                         existing.options.disabled = True
-                        schedules[program_id] = await client.updateSchedule(existing)
+                        try:
+                            schedules[program_id] = await client.updateSchedule(existing)
+                        except httpx.HTTPStatusError as error:
+                            if error.response.status_code != 409:
+                                raise
+                            schedules[program_id] = await client.getSchedule(program_id)
                     continue
                 if program.start_time < now or program_id in excluded:
                     continue
@@ -89,8 +94,13 @@ async def UpdateReservations(client: MirakcRecordingClient) -> None:
                     schedules[program_id] = schedule
                     logging.info(f'[MirakcAutoReservation] Added program {program_id} for condition {row.id}.')
                 except httpx.HTTPStatusError as error:
-                    if error.response.status_code == 409:
-                        schedules[program_id] = await client.getSchedule(program_id)
+                    if error.response.status_code == 400:
+                        try:
+                            schedules[program_id] = await client.getSchedule(program_id)
+                        except httpx.HTTPStatusError as lookup_error:
+                            if lookup_error.response.status_code != 404:
+                                raise
+                            logging.warning(f'[MirakcAutoReservation] Program {program_id} can no longer be scheduled.')
                     elif error.response.status_code == 404:
                         logging.warning(f'[MirakcAutoReservation] Program {program_id} is no longer in mirakc EPG.')
                     else:

@@ -117,6 +117,25 @@ class ReservationConditionsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(schedule.tags, ['manual'])
         self.assertEqual(schedule.options.priority, 2)
 
+    async def test_manual_reservation_added_during_auto_registration_is_preserved(self) -> None:
+        await self.addCondition()
+
+        def Race(request: httpx.Request) -> httpx.Response:
+            response = self.respond(request)
+            if request.method == 'POST':
+                schedule = next(iter(self.schedules.values()))
+                schedule.tags = ['manual']
+                schedule.options.priority = 2
+                return httpx.Response(400)
+            return response
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(Race)) as http:
+            await UpdateReservations(MirakcRecordingClient(http, 'http://mirakc'))
+        schedule = next(iter(self.schedules.values()))
+        self.assertEqual(self.created, 1)
+        self.assertEqual(schedule.tags, ['manual'])
+        self.assertEqual(schedule.options.priority, 2)
+
     async def test_deleted_reservation_is_not_recreated(self) -> None:
         await self.addCondition()
         await UpdateReservations(self.client)
