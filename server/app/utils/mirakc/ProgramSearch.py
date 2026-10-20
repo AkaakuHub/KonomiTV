@@ -5,7 +5,6 @@ from datetime import datetime
 
 from fastapi import HTTPException
 from pydantic import TypeAdapter
-from tortoise.transactions import in_transaction
 
 from app import schemas
 from app.constants import JST
@@ -143,16 +142,13 @@ async def SearchPrograms(condition: schemas.ProgramSearchCondition) -> list[sche
     if condition.broadcast_type != 'All':
         query = query.filter(is_free=condition.broadcast_type == 'FreeOnly')
     results: list[schemas.Program] = []
-    async with in_transaction() as connection:
-        program_ids = TypeAdapter(list[str]).validate_python(
-            await query.using_db(connection).order_by('start_time', 'id').values_list('id', flat=True),
-        )
-        for offset in range(0, len(program_ids), 128):
-            batch_ids = program_ids[offset:offset + 128]
-            order = {program_id: index for index, program_id in enumerate(batch_ids)}
-            rows = await Program.filter(id__in=batch_ids).using_db(connection).values()
-            programs = [schemas.Program.model_validate(row) for row in rows]
-            programs.sort(key=lambda program: order[program.id])
-            results.extend(program for program in programs if matcher.matches(program))
-            await asyncio.sleep(0)
+    program_ids = TypeAdapter(list[str]).validate_python(
+        await query.order_by('start_time', 'id').values_list('id', flat=True),
+    )
+    for offset in range(0, len(program_ids), 128):
+        rows = await query.filter(id__in=program_ids[offset:offset + 128]).values()
+        programs = [schemas.Program.model_validate(row) for row in rows]
+        results.extend(program for program in programs if matcher.matches(program))
+        await asyncio.sleep(0)
+    results.sort(key=lambda program: (program.start_time, program.id))
     return results
