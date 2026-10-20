@@ -85,6 +85,8 @@ class ProgramMatcher:
             return False
         if condition.duration_range_max is not None and program.duration > condition.duration_range_max * 60:
             return False
+        if not condition.keyword and not condition.exclude_keyword:
+            return True
         fields = {
             'title': program.title,
             'event': '\r\n'.join([program.title, program.description, *program.detail.keys(), *program.detail.values()]),
@@ -124,5 +126,18 @@ class ProgramMatcher:
 
 async def SearchPrograms(condition: schemas.ProgramSearchCondition) -> list[schemas.Program]:
     matcher = ProgramMatcher(condition)
-    programs = await Program.filter(channel__is_watchable=True, end_time__gt=datetime.now(JST)).order_by('start_time', 'id')
+    if not condition.is_enabled:
+        return []
+    query = Program.filter(channel__is_watchable=True, end_time__gt=datetime.now(JST))
+    if condition.service_ranges is not None:
+        query = query.filter(channel_id__in=[
+            f'NID{service.network_id}-SID{service.service_id:03d}' for service in condition.service_ranges
+        ])
+    if condition.duration_range_min is not None:
+        query = query.filter(duration__gte=condition.duration_range_min * 60)
+    if condition.duration_range_max is not None:
+        query = query.filter(duration__lte=condition.duration_range_max * 60)
+    if condition.broadcast_type != 'All':
+        query = query.filter(is_free=condition.broadcast_type == 'FreeOnly')
+    programs = await query.order_by('start_time', 'id').values()
     return [metadata for program in programs if matcher.matches(metadata := schemas.Program.model_validate(program))]
