@@ -16,6 +16,7 @@ from app.config import Config, LoadConfig
 from app.constants import (
     CLIENT_DIR,
     DATABASE_CONFIG,
+    HTTPX_CLIENT,
     QUALITY,
     VERSION,
 )
@@ -30,6 +31,7 @@ from app.routers import (
     LiveStreamsRouter,
     MaintenanceRouter,
     MirakcRecordingPresetsRouter,
+    MirakcReservationConditionsRouter,
     MirakcReservationsRouter,
     MirakcTunersRouter,
     NiconicoRouter,
@@ -48,6 +50,8 @@ from app.routers import (
 from app.streams.LiveStream import LiveStream
 from app.utils.edcb.EDCBTuner import EDCBTuner
 from app.utils.FastAPITaskUtil import StopRepeatedTasks, repeat_every
+from app.utils.mirakc.RecordingClient import MirakcRecordingClient
+from app.utils.mirakc.ReservationConditions import UpdateReservations
 
 
 # もし Config() の実行時に AssertionError が発生した場合は、LoadConfig() を実行してサーバー設定データをロードする
@@ -77,7 +81,7 @@ app.include_router(SeriesRouter.router)
 app.include_router(LiveStreamsRouter.router)
 app.include_router(VideoStreamsRouter.router)
 app.include_router(MirakcReservationsRouter.router if CONFIG.general.backend == 'Mirakc' else ReservationsRouter.router)
-app.include_router(ReservationConditionsRouter.router)
+app.include_router(MirakcReservationConditionsRouter.router if CONFIG.general.backend == 'Mirakc' else ReservationConditionsRouter.router)
 app.include_router(MirakcRecordingPresetsRouter.router if CONFIG.general.backend == 'Mirakc' else RecordingPresetsRouter.router)
 if CONFIG.general.backend == 'Mirakc':
     app.include_router(MirakcTunersRouter.router)
@@ -273,6 +277,14 @@ async def UpdateChannelAndProgram():
 @repeat_every(seconds=0.5 * 60, wait_first=0.5 * 60, logger=logging.logger)
 async def UpdateChannelJikkyoStatus():
     await Channel.updateJikkyoStatus()
+
+
+@app.on_event('startup')
+@repeat_every(seconds=30, logger=logging.logger)
+async def UpdateMirakcReservations():
+    if CONFIG.general.backend == 'Mirakc':
+        async with HTTPX_CLIENT() as client:
+            await UpdateReservations(MirakcRecordingClient(client, str(CONFIG.general.mirakurun_url)))
 
 # サーバーの終了時に実行する
 cleanup = False

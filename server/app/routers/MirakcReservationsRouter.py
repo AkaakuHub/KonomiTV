@@ -1,4 +1,5 @@
 from collections.abc import AsyncIterator
+from datetime import datetime, timedelta
 from typing import Annotated
 
 import httpx
@@ -7,12 +8,14 @@ from pydantic import ValidationError
 
 from app import logging, schemas
 from app.config import Config
-from app.constants import HTTPX_CLIENT
+from app.constants import HTTPX_CLIENT, JST
+from app.models.MirakcReservationCondition import MirakcRecordingExclusion
 from app.models.Program import Program
 from app.utils.mirakc.RecordingClient import (
     MirakcRecordingClient,
     RecordingScheduleInput,
 )
+from app.utils.mirakc.ReservationConditions import reservation_lock
 from app.utils.mirakc.Reservations import (
     DecodeRecordingSchedule,
     EncodeRecordingOptions,
@@ -93,4 +96,12 @@ async def DeleteReservationAPI(
     reservation_id: int,
     client: Annotated[MirakcRecordingClient, Depends(GetRecordingClient)],
 ) -> None:
-    await client.deleteSchedule(reservation_id)
+    async with reservation_lock:
+        schedule = await client.getSchedule(reservation_id)
+        if schedule.program.start_at is not None and schedule.program.duration is not None:
+            start_time = datetime.fromtimestamp(schedule.program.start_at / 1000, JST)
+            await MirakcRecordingExclusion.update_or_create(
+                program_id=reservation_id,
+                defaults=dict(end_time=start_time + timedelta(milliseconds=schedule.program.duration)),
+            )
+        await client.deleteSchedule(reservation_id)
