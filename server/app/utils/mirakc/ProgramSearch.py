@@ -1,8 +1,11 @@
+import asyncio
 import re
 import unicodedata
 from datetime import datetime
 
 from fastapi import HTTPException
+from pydantic import TypeAdapter
+from tortoise.transactions import in_transaction
 
 from app import schemas
 from app.constants import JST
@@ -139,5 +142,17 @@ async def SearchPrograms(condition: schemas.ProgramSearchCondition) -> list[sche
         query = query.filter(duration__lte=condition.duration_range_max * 60)
     if condition.broadcast_type != 'All':
         query = query.filter(is_free=condition.broadcast_type == 'FreeOnly')
-    programs = await query.order_by('start_time', 'id').values()
-    return [metadata for program in programs if matcher.matches(metadata := schemas.Program.model_validate(program))]
+    results: list[schemas.Program] = []
+    async with in_transaction() as connection:
+        program_ids = TypeAdapter(list[str]).validate_python(
+            await query.using_db(connection).order_by('start_time', 'id').values_list('id', flat=True),
+        )
+        for offset in range(0, len(program_ids), 128):
+            batch_ids = program_ids[offset:offset + 128]
+            order = {program_id: index for index, program_id in enumerate(batch_ids)}
+            rows = await Program.filter(id__in=batch_ids).using_db(connection).values()
+            programs = [schemas.Program.model_validate(row) for row in rows]
+            programs.sort(key=lambda program: order[program.id])
+            results.extend(program for program in programs if matcher.matches(program))
+            await asyncio.sleep(0)
+    return results
