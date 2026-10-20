@@ -89,6 +89,8 @@ async def ReservationUpdateAPI(
     schedule.options.disabled = options.disabled
     schedule.options.priority = options.priority
     schedule.options.preferred_tuner = options.preferred_tuner
+    schedule.options.start_margin_ms = options.start_margin_ms
+    schedule.options.end_margin_ms = options.end_margin_ms
     return await DecodeRecordingSchedule(await client.updateSchedule(schedule))
 
 

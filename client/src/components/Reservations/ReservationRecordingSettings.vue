@@ -130,7 +130,7 @@
         </div>
 
         <!-- 録画マージン -->
-        <div v-if="isEDCBBackend" class="reservation-recording-settings__section">
+        <div v-if="isEDCBBackend || isMirakcBackend" class="reservation-recording-settings__section">
             <div class="reservation-recording-settings__label">録画マージン (秒)</div>
             <div class="reservation-recording-settings__description">
                 番組開始時刻の何秒前から録画を開始し、番組終了時刻の何秒後に録画を終了するかの設定です。最低でも5秒以上をおすすめします。(0秒だと番組の冒頭/末尾が欠けてしまいます。)
@@ -476,6 +476,9 @@ const handleChange = () => {
 // マージンの「デフォルト設定を使う」ラベル
 // グローバルデフォルト値が取得できている場合は括弧書きで実際の値を表示
 const marginDefaultLabel = computed(() => {
+    if (isMirakcBackend.value) {
+        return 'デフォルト設定を使う (開始 5 秒前 / 終了 2 秒後)';
+    }
     const globalDefaults = props.presets?.global_defaults;
     if (globalDefaults) {
         return `デフォルト設定を使う (開始 ${globalDefaults.recording_start_margin} 秒前 / 終了 ${globalDefaults.recording_end_margin} 秒後)`;
