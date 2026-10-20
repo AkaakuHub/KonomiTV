@@ -86,6 +86,7 @@ async def ReservationUpdateAPI(
 ) -> schemas.Reservation:
     options = EncodeRecordingOptions(request.record_settings, reservation_id)
     schedule = await client.getSchedule(reservation_id)
+    schedule.options.disabled = options.disabled
     schedule.options.priority = options.priority
     schedule.options.preferred_tuner = options.preferred_tuner
     return await DecodeRecordingSchedule(await client.updateSchedule(schedule))

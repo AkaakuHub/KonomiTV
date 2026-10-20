@@ -29,6 +29,7 @@ class RecordingProgram(BaseModel):
 class RecordingOptions(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
+    disabled: bool = False
     content_path: Annotated[str, Field(alias='contentPath')]
     priority: Annotated[int, Field(ge=-2147483648, le=2147483647)] = 0
     preferred_tuner: Annotated[str | None, Field(alias='preferredTuner')] = None

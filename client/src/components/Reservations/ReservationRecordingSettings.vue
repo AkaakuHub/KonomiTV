@@ -29,7 +29,7 @@
         </div>
 
         <!-- 録画予約の有効/無効 -->
-        <div v-if="isEDCBBackend" class="reservation-recording-settings__section">
+        <div v-if="serverSettingsStore.supportsReservations" class="reservation-recording-settings__section">
             <div class="reservation-recording-settings__header">
                 <div class="reservation-recording-settings__label">録画予約の有効/無効</div>
                 <v-switch
@@ -44,7 +44,7 @@
             </div>
             <div class="reservation-recording-settings__description mb-0">
                 予約が無効なときは、この番組の録画動作を行いません。<br>
-                キーワード自動予約条件により不必要な番組が予約されてしまっているときは、予約を無効にしてみてください。(予約削除ではすぐ再追加されてしまい意味がありません。)
+                自動予約した番組も、個別に録画を無効にできます。
             </div>
         </div>
 
