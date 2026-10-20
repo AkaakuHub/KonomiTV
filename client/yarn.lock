@@ -3586,9 +3586,9 @@ mitt@^3.0.1:
   version "0.0.1"
   resolved "https://codeload.github.com/tsukumijima/mpeg2toh264/tar.gz/69f2a47aa5bbeb8ffce57ecf5408eaa85a59d7d1"
 
-"mpegts.js@github:AkaakuHub/mpegts.js#ee5c27ea955cde9d3f3b31f608d90376c47c5cf7":
+"mpegts.js@github:AkaakuHub/mpegts.js#471684b290e393d55eba144d009b80de8dc1364e":
   version "1.8.0"
-  resolved "https://codeload.github.com/AkaakuHub/mpegts.js/tar.gz/ee5c27ea955cde9d3f3b31f608d90376c47c5cf7"
+  resolved "https://codeload.github.com/AkaakuHub/mpegts.js/tar.gz/471684b290e393d55eba144d009b80de8dc1364e"
   dependencies:
     es6-promise "^4.2.5"
 
