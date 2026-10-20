@@ -40,7 +40,8 @@ class LivePlaybackDiagnostics {
     };
 
     private send(phase: Phase): void {
-        if (this.destroyed || this.player.video !== this.video) return;
+        if (this.destroyed || this.player.video !== this.video ||
+            this.player.plugins.mpegts !== this.mpegts_player) return;
         const player_store = usePlayerStore();
         const channels_store = useChannelsStore();
         const quality = typeof this.video.getVideoPlaybackQuality === 'function' ?
@@ -86,7 +87,9 @@ class LivePlaybackDiagnostics {
         this.destroyed = true;
         for (const timer of this.timers) window.clearTimeout(timer);
         this.video.removeEventListener('error', this.onNativeError);
-        this.mpegts_player?.off(mpegts.Events.ERROR, this.onMpegtsError);
+        if (this.player.plugins.mpegts === this.mpegts_player) {
+            this.mpegts_player?.off(mpegts.Events.ERROR, this.onMpegtsError);
+        }
     }
 }
 
