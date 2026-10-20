@@ -115,8 +115,6 @@ onMounted(async () => {
 </script>
 <style lang="scss" scoped>
 .condition-editor {
-    background: var(--background);
-
     &__columns {
         display: grid;
         grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
