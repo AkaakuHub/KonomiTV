@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from typing import Annotated, Any, Literal, cast
 
 import ariblib.constants
-from fastapi import APIRouter, Body, Depends, Query
+from fastapi import APIRouter, Body, Query
 from pydantic import TypeAdapter
 from tortoise import connections
 
@@ -19,6 +19,7 @@ from app.utils import NormalizeToJSTDatetime, ParseDatetimeStringToJST
 from app.utils.edcb import EventInfo, ReserveDataRequired, SearchKeyInfo
 from app.utils.edcb.CtrlCmdUtil import CtrlCmdUtil
 from app.utils.edcb.EDCBUtil import EDCBUtil
+from app.utils.mirakc.ProgramSearch import SearchPrograms
 from app.utils.mirakc.RecordingClient import MirakcRecordingClient
 from app.utils.TSInformation import TSInformation
 
@@ -287,11 +288,16 @@ def DecodeEDCBEventInfo(event_info: EventInfo) -> schemas.Program:
 )
 async def ProgramSearchAPI(
     program_search_condition: Annotated[schemas.ProgramSearchCondition, Body(description='番組検索条件。')],
-    edcb: Annotated[CtrlCmdUtil, Depends(GetCtrlCmdUtil)],
 ):
     """
     番組情報を検索する。
     """
+
+    if Config().general.backend == 'Mirakc':
+        programs = await SearchPrograms(program_search_condition)
+        return schemas.Programs(total=len(programs), programs=programs)
+
+    edcb = GetCtrlCmdUtil()
 
     # schemas.ProgramSearchCondition オブジェクトを SearchKeyInfo オブジェクトに変換
     search_key_info = await EncodeEDCBSearchKeyInfo(program_search_condition, edcb)
