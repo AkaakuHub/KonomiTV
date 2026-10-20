@@ -33,6 +33,8 @@ class RecordingOptions(BaseModel):
     content_path: Annotated[str, Field(alias='contentPath')]
     priority: Annotated[int, Field(ge=-2147483648, le=2147483647)] = 0
     preferred_tuner: Annotated[str | None, Field(alias='preferredTuner')] = None
+    start_margin_ms: Annotated[int | None, Field(alias='startMarginMs')] = None
+    end_margin_ms: Annotated[int | None, Field(alias='endMarginMs')] = None
     pre_filters: Annotated[list[str], Field(alias='preFilters', default_factory=list)]
     post_filters: Annotated[list[str], Field(alias='postFilters', default_factory=list)]
 

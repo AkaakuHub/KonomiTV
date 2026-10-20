@@ -13,14 +13,21 @@ from app.utils.mirakc.RecordingClient import RecordingOptions, RecordingSchedule
 
 def EncodeRecordingOptions(settings: schemas.RecordSettings, program_id: int) -> RecordingOptions:
     defaults = schemas.RecordSettings(is_event_relay_follow_enabled=False)
-    unsupported = settings.model_dump(exclude={'is_enabled', 'priority', 'preferred_tuner_name'})
-    if unsupported != defaults.model_dump(exclude={'is_enabled', 'priority', 'preferred_tuner_name'}):
+    supported = {'is_enabled', 'priority', 'preferred_tuner_name', 'recording_start_margin', 'recording_end_margin'}
+    unsupported = settings.model_dump(exclude=supported)
+    if unsupported != defaults.model_dump(exclude=supported):
         raise HTTPException(422, 'mirakcで未対応の録画設定が指定されています。')
+    start_margin_ms = (settings.recording_start_margin if settings.recording_start_margin is not None else 5) * 1000
+    end_margin_ms = (settings.recording_end_margin if settings.recording_end_margin is not None else 2) * 1000
+    if not all(-2147483648 <= margin <= 2147483647 for margin in (start_margin_ms, end_margin_ms)):
+        raise HTTPException(422, '録画マージンがmirakcの対応範囲外です。')
     return RecordingOptions(
         disabled=not settings.is_enabled,
         content_path=f'KonomiTV/{program_id}-{uuid4().hex}.ts',
         priority=settings.priority - 3,
         preferred_tuner=settings.preferred_tuner_name,
+        start_margin_ms=start_margin_ms,
+        end_margin_ms=end_margin_ms,
         pre_filters=[],
         post_filters=[],
     )
@@ -38,6 +45,11 @@ async def DecodeRecordingSchedule(schedule: RecordingSchedule) -> schemas.Reserv
         raise HTTPException(502, 'mirakcから予約番組の日時を取得できませんでした。')
     if not -2 <= schedule.options.priority <= 2:
         raise HTTPException(502, 'mirakcの予約優先度がKonomiTVの対応範囲外です。')
+    start_margin_ms = schedule.options.start_margin_ms if schedule.options.start_margin_ms is not None else 2000
+    end_margin_ms = schedule.options.end_margin_ms if schedule.options.end_margin_ms is not None else 2000
+    if start_margin_ms % 1000 or end_margin_ms % 1000:
+        raise HTTPException(502, 'mirakcの録画マージンが秒単位ではありません。')
+    default_margins = (start_margin_ms, end_margin_ms) == (5000, 2000)
     start_time = datetime.fromtimestamp(source.start_at / 1000, JST)
     duration = source.duration / 1000
     metadata = schemas.Program.model_validate(program).model_copy(update=dict(
@@ -60,6 +72,8 @@ async def DecodeRecordingSchedule(schedule: RecordingSchedule) -> schemas.Reserv
             is_enabled=not schedule.options.disabled,
             priority=schedule.options.priority + 3,
             preferred_tuner_name=schedule.options.preferred_tuner,
+            recording_start_margin=None if default_margins else start_margin_ms // 1000,
+            recording_end_margin=None if default_margins else end_margin_ms // 1000,
             is_event_relay_follow_enabled=False,
         ),
     )
