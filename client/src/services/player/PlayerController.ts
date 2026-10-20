@@ -127,6 +127,10 @@ class PlayerController {
     // 破棄済みかどうか
     private destroyed = false;
 
+    // ライブ再生開始時の一時ミュートを、保存済みミュートと区別するフラグ
+    // 一時ミュートで発火した volumechange を、ユーザー操作として保存しないために使う
+    private is_live_startup_temporary_muted = false;
+
 
     /**
      * コンストラクタ
@@ -245,6 +249,7 @@ class PlayerController {
 
         // 破棄済みかどうかのフラグを下ろす
         this.destroyed = false;
+        this.is_live_startup_temporary_muted = false;
         this.is_offline_fallback_in_progress = false;
 
         // PlayerStore にプレイヤーを初期化したことを通知する
@@ -968,6 +973,7 @@ class PlayerController {
         // スマホ向け UI ではミュートを解除する音量ボタンが表示されないため、PC 向け UI の状態だけを保存する
         this.player.on('volumechange', () => {
             if (this.player === null || this.player.container.classList.contains('dplayer-mobile') === true) return;
+            if (this.is_live_startup_temporary_muted === true) return;
             localStorage.setItem('dplayer-is-muted', this.player.video.muted ? 'true' : 'false');
         });
 
@@ -1560,6 +1566,39 @@ class PlayerController {
                 // 必ず最初はローディング状態とする
                 player_store.is_loading = true;
 
+                // DPlayer のスマホ向け UI ではミュート解除用の音量ボタンがないため、PC 向け UI の保存値だけ参照する
+                const should_keep_muted_after_live_startup =
+                    this.player.container.classList.contains('dplayer-mobile') === false &&
+                    localStorage.getItem('dplayer-is-muted') === 'true';
+
+                // 再生準備中の音声を出さないため、一時的にミュートする
+                // 保存済みミュートと区別し、volumechange 側で保存値を上書きしないようにする
+                this.is_live_startup_temporary_muted = this.player.video.muted === false;
+                this.player.video.muted = true;
+
+                // この時点で HTMLVideoElement.paused が true のとき、再生できるようになるまで 0.05 秒間を開けて 5 回試す
+                if (this.player.video.paused === true) {
+                    let attempts = 0;
+                    const maxAttempts = 5;  // 試行回数
+                    const attemptInterval = 0.05;  // 試行間隔 (秒)
+                    const attemptPlay = async (): Promise<void> => {
+                        if (attempts >= maxAttempts) {
+                            console.warn(`\u001b[31m[PlayerController] Failed to start playback after ${maxAttempts} attempts.`);
+                            return;
+                        }
+                        try {
+                            await this.player?.video.play();
+                            console.log('\u001b[31m[PlayerController] Playback started successfully.');
+                        } catch (error) {
+                            console.warn(`\u001b[31m[PlayerController] Attempt ${attempts + 1} to start playback failed:`, error);
+                            attempts++;
+                            await Utils.sleep(attemptInterval);
+                            await attemptPlay();
+                        }
+                    };
+                    await attemptPlay();
+                }
+
                 // 再生準備ができた段階で再生バッファを調整し、再生準備ができた段階でローディング中の背景写真を非表示にするイベントハンドラーを登録
                 let on_canplay_called = false;
                 const on_canplay = async () => {
@@ -1627,6 +1666,28 @@ class PlayerController {
                         player_store.is_background_display = false;
                     }
 
+                    // ユーザーがミュートを保存している場合は、再生開始時のフェードインでミュートを解除しない
+                    if (should_keep_muted_after_live_startup === true) {
+                        this.is_live_startup_temporary_muted = false;
+                    } else {
+                        this.is_live_startup_temporary_muted = false;
+                        this.player.video.muted = false;
+                        // ミュート中でない場合だけフェードインする (いきなり再生されるよりも体験が良い)
+                        // 開始音量を 0 に下げてから、保存されている音量まで徐々に上げる
+                        this.player.video.volume = 0;
+                        // 0.5 秒間かけて 0 から current_volume まで音量を上げる
+                        const current_volume = this.player.user.get('volume');  // 0.0 ~ 1.0 の範囲
+                        const volume_step = current_volume / 10;
+                        for (let i = 0; i < 10; i++) {  // 10 回に分けて音量を上げる
+                            await Utils.sleep(0.5 / 10);
+                            // 音量が current_volume を超えないようにする
+                            // 浮動小数点絡みの問題 (丸め誤差) が出るため小数第3位で切り捨てる
+                            this.player.video.volume = Math.min(Utils.mathFloor(this.player.video.volume + volume_step, 3), current_volume);
+                        }
+                        // 最後に current_volume に設定し直す
+                        // 上記ロジックでは丸め誤差の関係で完全に current_volume とは一致しないことがあるため
+                        this.player.video.volume = current_volume;
+                    }
                 };
                 this.player.video.oncanplay = on_canplay;
                 this.player.video.oncanplaythrough = on_canplay;
