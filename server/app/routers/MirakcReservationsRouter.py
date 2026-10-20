@@ -84,9 +84,10 @@ async def ReservationUpdateAPI(
     request: schemas.ReservationUpdateRequest,
     client: Annotated[MirakcRecordingClient, Depends(GetRecordingClient)],
 ) -> schemas.Reservation:
-    options = EncodeRecordingOptions(request.record_settings, reservation_id)
     async with reservation_lock:
         schedule = await client.getSchedule(reservation_id)
+        options = EncodeRecordingOptions(request.record_settings, reservation_id, schedule.options.content_path)
+        schedule.options.content_path = options.content_path
         schedule.options.disabled = options.disabled
         schedule.options.priority = options.priority
         schedule.options.preferred_tuner = options.preferred_tuner
