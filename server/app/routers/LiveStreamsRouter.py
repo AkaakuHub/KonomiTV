@@ -11,6 +11,7 @@ from starlette.types import Receive
 
 from app import logging, schemas
 from app.models.Channel import Channel
+from app.streams.LivePlaybackDiagnostics import LivePlaybackDiagnostics
 from app.streams.LiveStream import LiveStream, LiveStreamStatus
 from app.streams.StreamEncodingOptions import (
     SplitQualityAndEncodingOptions,
@@ -99,6 +100,17 @@ async def LiveStreamsAPI():
 
     # すべてのライブストリームの状態を返す
     return result
+
+
+@router.post('/{display_channel_id}/{quality}/diagnostics', status_code=status.HTTP_204_NO_CONTENT)
+async def LivePlaybackDiagnosticsAPI(
+    display_channel_id: Annotated[str, Depends(ValidateChannelID)],
+    stream_quality: Annotated[StreamQualityWithOptions, Depends(ValidateQuality)],
+    diagnostics: LivePlaybackDiagnostics,
+) -> None:
+    logging.warning(
+        f'[PlaybackDiagnostics: {display_channel_id}-{stream_quality.quality}] {diagnostics.model_dump_json()}'
+    )
 
 
 @router.get(
