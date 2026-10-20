@@ -149,8 +149,7 @@ export class PlayerUtils {
      * @returns 再生できるなら true、できないなら false
      */
     static async isHEVC10bitVideoSupported(): Promise<boolean> {
-        // 本来の Main10 プロファイルは hvc1.2.4.L123.B0 らしいが、mpegts.js の MIME 文字列生成ロジックに合わせてこれで検証している
-        const video_content_type = 'video/mp4; codecs="hvc1.2.1.L123.B0"';
+        const video_content_type = 'video/mp4; codecs="hvc1.2.4.L123.B0"';
         const audio_content_type = 'audio/mp4; codecs="mp4a.40.2"';
 
         // HEVC 10bit は透過的に有効化するため、MediaCapabilities で対応を判断できる環境だけを対象にする
