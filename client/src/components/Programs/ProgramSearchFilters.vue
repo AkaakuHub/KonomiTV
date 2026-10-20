@@ -680,11 +680,7 @@ const stringifyCondition = (condition: IProgramSearchCondition): string => {
 
 const syncLocalStateFromCondition = (condition: IProgramSearchCondition) => {
     const rawCondition = structuredClone(toRaw(condition));
-    localCondition.value = {
-        ...rawCondition,
-        is_enabled: true,
-        note: '',
-    };
+    localCondition.value = rawCondition;
 
     // null は全チャンネル扱いなので、現在の KonomiTV チャンネル一覧をすべて選択済みに戻す
     if (condition.service_ranges !== null) {
@@ -913,8 +909,6 @@ const copyDateRange = (index: number) => {
 
 const buildCondition = (): IProgramSearchCondition => {
     const condition = structuredClone(toRaw(localCondition.value));
-    condition.is_enabled = true;
-    condition.note = '';
     condition.keyword = condition.keyword ?? '';
     condition.exclude_keyword = condition.exclude_keyword ?? '';
 
@@ -956,10 +950,6 @@ const buildCondition = (): IProgramSearchCondition => {
         Number.isFinite(condition.duration_range_max) === true
         ? Math.max(0, Math.floor(condition.duration_range_max))
         : null;
-
-    // 重複チェックはキーワード自動予約で予約を無効化するための条件なので、番組検索結果の絞り込みでは参照しない
-    condition.duplicate_title_check_scope = 'None';
-    condition.duplicate_title_check_period_days = 6;
 
     return condition;
 };

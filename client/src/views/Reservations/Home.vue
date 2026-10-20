@@ -10,6 +10,8 @@
                         { name: 'ホーム', path: '/' },
                         { name: '録画予約', path: '/reservations/', disabled: true },
                     ]" />
+                    <v-btn v-if="serverSettingsStore.server_settings.general.backend === 'Mirakc'" class="mb-6"
+                        color="primary" variant="outlined" to="/reservations/conditions">キーワード自動予約</v-btn>
                     <!-- 放送が近い録画予約セクション -->
                     <ReservationList
                         class="reservations-home-container__upcoming-reservations"
@@ -42,10 +44,12 @@ import Navigation from '@/components/Navigation.vue';
 import ReservationList from '@/components/Reservations/ReservationList.vue';
 import SPHeaderBar from '@/components/SPHeaderBar.vue';
 import Reservations, { IReservation } from '@/services/Reservations';
+import useServerSettingsStore from '@/stores/ServerSettingsStore';
 import { dayjs } from '@/utils';
 
 // 放送が近い録画予約のリスト
 const upcomingReservations = ref<IReservation[]>([]);
+const serverSettingsStore = useServerSettingsStore();
 const totalUpcomingReservations = ref(0);
 
 const isLoading = ref(true);
@@ -130,6 +134,7 @@ const stopAutoRefresh = () => {
 
 // 開始時に実行
 onMounted(() => {
+    serverSettingsStore.fetchServerSettingsOnce();
     startAutoRefresh();
 });
 
